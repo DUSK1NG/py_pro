@@ -3,6 +3,7 @@
 import streamlit as st
 from mechanics.section_properties import section_inertia
 from utils.report import build_markdown_report, build_pdf_report
+from vision.streamlit_image import render_image_measurement
 from utils.units import convert_modulus_to_mpa
 
 from app import calculate_beam
@@ -374,6 +375,8 @@ def main() -> None:
 
     else:
         st.info("从左侧输入梁参数并点击“开始计算”，查看理论响应。")
+
+    render_image_measurement()
 
 
 if __name__ == "__main__":
