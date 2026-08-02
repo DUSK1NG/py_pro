@@ -6,7 +6,13 @@ from utils.report import build_markdown_report, build_pdf_report
 from vision.streamlit_image_ui import render_image_measurement
 from vision.export_ui import render_measurement_exports, render_theory_exports
 from vision.report_ui import render_report_exports
-from utils.units import convert_modulus_to_mpa
+from utils.units import (
+    convert_distributed_load_to_n_per_mm,
+    convert_force_to_n,
+    convert_length_to_mm,
+    convert_modulus_to_mpa,
+)
+from vision.load_deflection_ui import render_load_deflection_analysis
 
 from app import calculate_beam
 from visualization.plotting import (
@@ -281,6 +287,13 @@ def main() -> None:
                 inertia_moment=inertia_moment,
                 position=position,
             )
+            if load_type == "满跨均布荷载":
+                total_load_n = convert_distributed_load_to_n_per_mm(
+                    load_value, load_unit
+                ) * convert_length_to_mm(length, length_unit)
+            else:
+                total_load_n = convert_force_to_n(load_value, load_unit)
+            result["load_n"] = total_load_n
             st.session_state["theory_result"] = result
             st.session_state["report_inputs"] = {
                 "荷载类型": load_type,
@@ -350,6 +363,7 @@ def main() -> None:
     theory_result = st.session_state.get("theory_result")
     render_theory_exports(theory_result)
     render_measurement_exports(st.session_state.get("curve_measurement"), theory_result)
+    render_load_deflection_analysis(theory_result)
     render_report_exports(
         theory_result,
         st.session_state.get("report_inputs"),
