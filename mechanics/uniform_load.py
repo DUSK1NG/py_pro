@@ -69,4 +69,5 @@ def sample_beam(
     deflections = [deflection(x, checked_length, checked_intensity, checked_modulus, checked_inertia) for x in positions]
     midspan = checked_length / 2
     maximum_deflection = deflection(midspan, checked_length, checked_intensity, checked_modulus, checked_inertia)
-    return {"x": positions, "shear": shears, "moment": moments, "deflection": deflections, "max_shear": checked_intensity * checked_length / 2, "max_moment": checked_intensity * checked_length**2 / 8, "max_moment_position": midspan, "max_deflection": maximum_deflection, "max_deflection_magnitude": abs(maximum_deflection), "max_deflection_position": midspan}
+    left_reaction, right_reaction = support_reactions(checked_length, checked_intensity)
+    return {"left_reaction": left_reaction, "right_reaction": right_reaction, "x": positions, "shear": shears, "moment": moments, "deflection": deflections, "max_shear": checked_intensity * checked_length / 2, "max_moment": checked_intensity * checked_length**2 / 8, "max_moment_position": midspan, "max_deflection": maximum_deflection, "max_deflection_magnitude": abs(maximum_deflection), "max_deflection_position": midspan}

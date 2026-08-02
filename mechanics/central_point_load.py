@@ -81,6 +81,7 @@ def sample_beam(
     ]
 
     midspan = checked_length / 2
+    left_reaction, right_reaction = support_reactions(checked_length, checked_load)
     maximum_deflection = deflection(
         midspan,
         checked_length,
@@ -90,6 +91,8 @@ def sample_beam(
     )
 
     return {
+        "left_reaction": left_reaction,
+        "right_reaction": right_reaction,
         "x": positions,
         "shear": shears,
         "moment": moments,

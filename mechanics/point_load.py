@@ -116,8 +116,11 @@ def sample_beam(
     max_deflection_index = min(
         range(len(deflections)), key=lambda index: deflections[index]
     )
+    left_reaction, right_reaction = support_reactions(checked_length, checked_load, checked_position)
 
     return {
+        "left_reaction": left_reaction,
+        "right_reaction": right_reaction,
         "x": positions,
         "shear": shears,
         "moment": moments,
