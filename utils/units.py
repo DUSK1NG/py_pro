@@ -38,3 +38,11 @@ def convert_distributed_load_to_n_per_mm(value: object, unit: str) -> float:
         {"N/mm": 1.0, "N/m": 0.001, "kN/m": 1.0, "kN/mm": 1000.0},
         "均布荷载",
     )
+def convert_modulus_to_mpa(value: object, unit: str) -> float:
+    """将 MPa 或 GPa 的弹性模量转换为 MPa。"""
+    return _convert(
+        value,
+        unit,
+        {"MPa": 1.0, "GPa": 1000.0},
+        "弹性模量",
+    )
