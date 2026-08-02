@@ -1,6 +1,7 @@
 """BeamLab 工程分析工作台：Streamlit 优化入口。"""
 
 import streamlit as st
+from mechanics.section_properties import section_inertia
 from utils.units import convert_modulus_to_mpa
 
 from app import calculate_beam
@@ -164,13 +165,48 @@ def main() -> None:
         key="modulus_unit",
     )
 
-    inertia_value_col, inertia_unit_col = st.sidebar.columns([2, 1])
-    inertia_moment = inertia_value_col.number_input(
-        "截面惯性矩 I",
-        min_value=0.001,
-        value=1000000.0,
+    section_type = st.sidebar.selectbox(
+        "截面类型",
+        ["矩形截面", "圆形截面", "自定义"],
     )
-    inertia_unit_col.caption("mm⁴")
+
+    if section_type == "矩形截面":
+        width_col, height_col = st.sidebar.columns(2)
+        section_width = width_col.number_input(
+            "宽度 b（mm）",
+            min_value=0.001,
+            value=20.0,
+        )
+        section_height = height_col.number_input(
+            "高度 h（mm）",
+            min_value=0.001,
+            value=30.0,
+        )
+        inertia_moment = section_inertia(
+            section_type,
+            width=section_width,
+            height=section_height,
+        )
+    elif section_type == "圆形截面":
+        section_diameter = st.sidebar.number_input(
+            "直径 d（mm）",
+            min_value=0.001,
+            value=20.0,
+        )
+        inertia_moment = section_inertia(
+            section_type,
+            diameter=section_diameter,
+        )
+    else:
+        custom_inertia = st.sidebar.number_input(
+            "截面惯性矩 I（mm⁴）",
+            min_value=0.001,
+            value=1000000.0,
+        )
+        inertia_moment = section_inertia(
+            section_type,
+            inertia=custom_inertia,
+        )
 
     st.sidebar.markdown(
         '<div class="section-label">荷载输入</div>',
