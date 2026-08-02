@@ -21,15 +21,71 @@
 
 OpenCV 采用静态图片方案：用户上传未加载图片和加载后图片，完成标记点识别、像素标定、完整挠度曲线和理论/实测对比。本项目不包含视频读取、实时摄像头或连续帧监测功能。
 
-## 安装与测试
+## 安装与运行
 
-在项目根目录执行：
+### 环境要求
+
+- Python 3.11 或更高版本；
+- Windows、macOS 或 Linux；
+- 建议使用虚拟环境；
+- OpenCV 仅用于静态图片处理，不需要摄像头。
+
+### Windows PowerShell
+
+在 GitHub 项目页面点击 **Code → Download ZIP** 解压，或使用 Git 克隆：
 
 ```powershell
+git clone https://github.com/DUSK1NG/py_pro.git
+cd py_pro
 python -m venv .venv
 .venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
-python -m pytest -v
+```
+
+启动界面：
+
+```powershell
+streamlit run app_styled.py
+```
+
+浏览器打开 Streamlit 显示的本地地址，通常为 `http://localhost:8501`。
+
+### macOS / Linux
+
+```bash
+git clone https://github.com/DUSK1NG/py_pro.git
+cd py_pro
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+streamlit run app_styled.py
+```
+
+### 运行测试
+
+安装依赖后，在项目根目录执行：
+
+```powershell
+python -m pytest -q
+```
+
+当前测试数量为 77 项。GitHub Actions 会在每次推送和 Pull Request 时自动执行测试。
+
+### Windows 常见问题
+
+如果 PowerShell 阻止虚拟环境激活，可仅对当前用户允许脚本执行：
+
+```powershell
+Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
+```
+
+如果系统没有 `python` 命令，可以尝试使用 `py`：
+
+```powershell
+py -3.11 -m venv .venv
+.venv\Scripts\Activate.ps1
 ```
 
 ## 启动界面
