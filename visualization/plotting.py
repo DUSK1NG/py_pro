@@ -4,9 +4,26 @@ import math
 from pathlib import Path
 
 import matplotlib.pyplot as plt
+from matplotlib import font_manager
 
-# Windows 已安装 Microsoft YaHei；配置后中文标题与坐标轴可正常保存到 PNG。
-plt.rcParams["font.sans-serif"] = ["Microsoft YaHei"]
+
+def _available_chinese_fonts() -> list[str]:
+    """按可读性返回本机可用的中文无衬线字体。"""
+    installed = {font.name for font in font_manager.fontManager.ttflist}
+    preferred = [
+        "Microsoft YaHei",
+        "Noto Sans CJK SC",
+        "Source Han Sans CN",
+        "SimHei",
+        "WenQuanYi Zen Hei",
+        "DejaVu Sans",
+    ]
+    available = [font for font in preferred if font in installed]
+    return available or ["DejaVu Sans"]
+
+
+# Windows 优先微软雅黑，Linux 优先 Noto Sans CJK；配置后中文标题与坐标轴可正常保存到 PNG。
+plt.rcParams["font.sans-serif"] = _available_chinese_fonts()
 plt.rcParams["axes.unicode_minus"] = False
 
 def _validate_result(result: object, curve_name: str) -> tuple[list[float], list[float]]:
