@@ -1,6 +1,12 @@
-# 简支梁力学分析系统
+# 简支梁力学分析与挠度监测系统
 
-这是一个面向材料力学实验的简支梁理论分析工具，当前支持三类静力荷载，并提供 Streamlit 可视化界面。
+[![Tests](https://github.com/DUSK1NG/py_pro/actions/workflows/tests.yml/badge.svg)](https://github.com/DUSK1NG/py_pro/actions/workflows/tests.yml)
+[![Python](https://img.shields.io/badge/Python-3.11+-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![Streamlit](https://img.shields.io/badge/UI-Streamlit-FF4B4B?logo=streamlit&logoColor=white)](https://streamlit.io/)
+
+这是一个面向材料力学实验的简支梁理论分析与静态图片挠度测量工具，支持三类静力荷载、OpenCV 图像识别、理论/实测对比和数据导出。
+
+> 当前版本采用“上传两张静态图片”的方案，不包含视频、实时摄像头和连续帧监测。
 
 ## 当前功能
 
@@ -39,6 +45,31 @@ streamlit run app_styled.py
 ```powershell
 streamlit run app.py
 ```
+
+## 项目结构
+
+```text
+mechanics/       力学计算、荷载模型和截面属性
+vision/          静态图片识别、曲线提取和 Streamlit 图像区
+visualization/   剪力、弯矩和挠度图
+utils/           单位、校验、对比、报告和 CSV 导出
+tests/           理论、图像、导出和界面相关测试
+sample_data/     示例 CSV 和实验装置参考图
+docs/            实验说明、报告提纲和答辩提纲
+```
+
+## 快速体验
+
+1. 启动 `app_styled.py`；
+2. 输入梁长、荷载、材料和截面参数；
+3. 点击“开始计算”查看理论结果；
+4. 在“图像测量”中上传未加载图和加载图；
+5. 在“荷载—挠度数据分析”中上传 `sample_data/load_deflection_example.csv`；
+6. 下载 CSV、PNG 或 Markdown/PDF 报告。
+
+![简支梁挠度实验装置参考图](sample_data/reference_beam_deflection_apparatus.jpg)
+
+图片仅作实验装置参考，来源和使用说明见 [sample_data/README.md](sample_data/README.md)。
 
 ## 输入单位
 
