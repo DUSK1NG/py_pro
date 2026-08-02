@@ -2,7 +2,12 @@ from io import BytesIO
 
 import matplotlib.pyplot as plt
 
-from utils.export import build_curve_csv, build_result_csv, figure_to_png_bytes
+from utils.export import (
+    build_curve_csv,
+    build_load_deflection_csv,
+    build_result_csv,
+    figure_to_png_bytes,
+)
 
 
 def test_result_csv_contains_summary_fields():
@@ -30,3 +35,17 @@ def test_figure_export_returns_png_bytes():
     assert data.startswith(b"\x89PNG")
     assert len(data) > 100
     plt.close(figure)
+
+
+def test_load_deflection_csv_contains_comparison_columns():
+    csv_text = build_load_deflection_csv(
+        {
+            "load_n": [0, 20],
+            "measured_deflection_mm": [0, -0.2],
+            "theoretical_deflection_mm": [0, -0.2],
+            "error_mm": [0, 0],
+            "relative_error_percent": [None, 0],
+        }
+    )
+    assert "load_n,measured_deflection_mm,theoretical_deflection_mm" in csv_text
+    assert "20.0,-0.2,-0.2,0.0,0.0" in csv_text

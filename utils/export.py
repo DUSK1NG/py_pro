@@ -79,3 +79,27 @@ def build_measured_curve_csv(
     writer.writerow(["x_mm", "measured_deflection_mm"])
     writer.writerows(zip(x_values, measured_values))
     return buffer.getvalue()
+
+
+def build_load_deflection_csv(comparison: dict[str, object]) -> str:
+    """导出多组荷载—挠度理论/实测对比 CSV。"""
+    required = (
+        "load_n",
+        "measured_deflection_mm",
+        "theoretical_deflection_mm",
+        "error_mm",
+        "relative_error_percent",
+    )
+    if not isinstance(comparison, dict) or any(key not in comparison for key in required):
+        raise ValueError("荷载—挠度对比结果缺少必要字段。")
+    columns = [list(comparison[key]) for key in required]
+    if len({len(column) for column in columns}) != 1:
+        raise ValueError("荷载—挠度导出数据长度必须一致。")
+    buffer = StringIO(newline="")
+    writer = csv.writer(buffer, lineterminator="\n")
+    writer.writerow(list(required))
+    for row in zip(*columns):
+        writer.writerow(
+            ["" if value is None else float(value) for value in row]
+        )
+    return buffer.getvalue()
