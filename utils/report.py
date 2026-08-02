@@ -134,3 +134,49 @@ def build_pdf_report(
     ]
     document.build(story)
     return buffer.getvalue()
+
+def _merge_measurement_summary(
+    inputs: Mapping[str, object],
+    measurement: Mapping[str, object] | None,
+    comparison: Mapping[str, object] | None,
+) -> dict[str, object]:
+    merged = dict(inputs)
+    if measurement is not None and "deflection_mm" in measurement:
+        merged["实测跨中挠度"] = f"{float(measurement['deflection_mm']):.6f} mm"
+    if comparison is not None:
+        if "absolute_error_mm" in comparison:
+            merged["绝对误差"] = f"{float(comparison['absolute_error_mm']):.6f} mm"
+        if comparison.get("relative_error_percent") is not None:
+            merged["相对误差"] = f"{float(comparison['relative_error_percent']):.2f}%"
+        if "max_abs_error_mm" in comparison:
+            merged["最大曲线绝对误差"] = f"{float(comparison['max_abs_error_mm']):.6f} mm"
+        if "mean_abs_error_mm" in comparison:
+            merged["平均曲线绝对误差"] = f"{float(comparison['mean_abs_error_mm']):.6f} mm"
+    return merged
+
+
+_original_build_markdown_report = build_markdown_report
+_original_build_pdf_report = build_pdf_report
+
+
+def build_markdown_report(
+    inputs: Mapping[str, object],
+    result: Mapping[str, object],
+    measurement: Mapping[str, object] | None = None,
+    comparison: Mapping[str, object] | None = None,
+) -> str:
+    merged = _merge_measurement_summary(inputs, measurement, comparison)
+    report = _original_build_markdown_report(merged, result)
+    if measurement is not None or comparison is not None:
+        report = report.replace("本报告不包含 OpenCV 实测数据。", "本报告包含 OpenCV 实测摘要和误差结果。")
+    return report
+
+
+def build_pdf_report(
+    inputs: Mapping[str, object],
+    result: Mapping[str, object],
+    measurement: Mapping[str, object] | None = None,
+    comparison: Mapping[str, object] | None = None,
+) -> bytes:
+    merged = _merge_measurement_summary(inputs, measurement, comparison)
+    return _original_build_pdf_report(merged, result)

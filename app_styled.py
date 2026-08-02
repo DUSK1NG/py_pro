@@ -4,6 +4,8 @@ import streamlit as st
 from mechanics.section_properties import section_inertia
 from utils.report import build_markdown_report, build_pdf_report
 from vision.streamlit_image_ui import render_image_measurement
+from vision.export_ui import render_measurement_exports, render_theory_exports
+from vision.report_ui import render_report_exports
 from utils.units import convert_modulus_to_mpa
 
 from app import calculate_beam
@@ -280,6 +282,15 @@ def main() -> None:
                 position=position,
             )
             st.session_state["theory_result"] = result
+            st.session_state["report_inputs"] = {
+                "荷载类型": load_type,
+                "荷载大小": f"{load_value:g} {load_unit}",
+                "荷载位置": f"{position:g} {length_unit}" if position is not None else "跨中",
+                "梁长": f"{length:g} {length_unit}",
+                "弹性模量": f"{elastic_modulus_input:g} {modulus_unit}",
+                "截面信息": section_description,
+                "截面惯性矩": f"{inertia_moment:.3f} mm⁴",
+            }
             st.markdown("### 计算结果")
 
             cards = [
@@ -329,47 +340,6 @@ def main() -> None:
                     use_container_width=True,
                 )
 
-            with st.popover("导出报告"):
-                st.caption("选择格式后生成当前理论计算报告")
-                report_format = st.radio(
-                    "报告格式",
-                    ["Markdown", "PDF"],
-                    horizontal=True,
-                    key="report_format",
-                )
-                if st.button("生成报告", key="generate_report"):
-                    report_inputs = {
-                        "荷载类型": load_type,
-                        "荷载大小": f"{load_value:g} {load_unit}",
-                        "荷载位置": (
-                            f"{position:g} {length_unit}"
-                            if position is not None
-                            else "跨中"
-                        ),
-                        "梁长": f"{length:g} {length_unit}",
-                        "弹性模量": f"{elastic_modulus_input:g} {modulus_unit}",
-                        "截面信息": section_description,
-                        "截面惯性矩": f"{inertia_moment:.3f} mm⁴",
-                    }
-                    if report_format == "Markdown":
-                        report_data = build_markdown_report(report_inputs, result)
-                        st.download_button(
-                            "下载 Markdown 报告",
-                            data=report_data,
-                            file_name="beamlab_report.md",
-                            mime="text/markdown",
-                            key="download_markdown_report",
-                        )
-                    else:
-                        report_data = build_pdf_report(report_inputs, result)
-                        st.download_button(
-                            "下载 PDF 报告",
-                            data=report_data,
-                            file_name="beamlab_report.pdf",
-                            mime="application/pdf",
-                            key="download_pdf_report",
-                        )
-
         except ValueError as error:
             st.error(f"参数无法计算：{error}")
 
@@ -377,6 +347,15 @@ def main() -> None:
         st.info("从左侧输入梁参数并点击“开始计算”，查看理论响应。")
 
     render_image_measurement(st.session_state.get("theory_result"))
+    theory_result = st.session_state.get("theory_result")
+    render_theory_exports(theory_result)
+    render_measurement_exports(st.session_state.get("curve_measurement"), theory_result)
+    render_report_exports(
+        theory_result,
+        st.session_state.get("report_inputs"),
+        st.session_state.get("image_measurement"),
+        st.session_state.get("curve_measurement"),
+    )
 
 
 if __name__ == "__main__":
