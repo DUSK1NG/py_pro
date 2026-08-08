@@ -12,6 +12,7 @@ from mechanics.textbook_solver import solve_textbook_beam
 
 
 EXAMPLES_PATH = Path(__file__).parents[1] / "sample_data" / "textbook_examples.json"
+README_PATH = Path(__file__).parents[1] / "README.md"
 
 
 def _problem_from_example(example: dict[str, object]) -> BeamProblem:
@@ -26,6 +27,7 @@ def _problem_from_example(example: dict[str, object]) -> BeamProblem:
 
 
 def test_textbook_examples_run_with_documented_methods_reactions_and_deflections():
+    assert "77 项自动化测试" not in README_PATH.read_text(encoding="utf-8")
     examples = json.loads(EXAMPLES_PATH.read_text(encoding="utf-8"))["examples"]
 
     assert {example["id"] for example in examples} == {
@@ -42,6 +44,15 @@ def test_textbook_examples_run_with_documented_methods_reactions_and_deflections
         assert [reaction.vertical_n for reaction in result.reactions] == pytest.approx(
             expected["vertical_reactions_n"], abs=1e-6
         )
+        if example["id"] == "cantilever_tip_load":
+            fixed_reaction = next(
+                reaction
+                for reaction in result.reactions
+                if reaction.support_kind == "fixed"
+            )
+            assert fixed_reaction.moment_n_mm == pytest.approx(
+                expected["fixed_reaction_moment_n_mm"], abs=1e-6
+            )
         assert result.max_deflection_mm == pytest.approx(
             expected["max_deflection_mm"], abs=1e-9
         )

@@ -68,6 +68,7 @@
         "method": "analytical",
         "classification": "静定",
         "vertical_reactions_n": [100.0],
+        "fixed_reaction_moment_n_mm": 100000.0,
         "max_deflection_mm": -0.16666666666666669,
         "max_deflection_position_mm": 1000.0
       }

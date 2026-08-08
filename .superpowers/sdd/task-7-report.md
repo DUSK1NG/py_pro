@@ -15,3 +15,21 @@
 - `python -m pytest tests/test_textbook_examples.py -q`：1 passed
 - `python -m py_compile app.py app_styled.py mechanics/*.py ui/*.py utils/*.py vision/*.py`：通过（PowerShell 不展开通配符，使用等价的文件列表调用完成检查）
 - `python -m pytest -q`：139 passed
+
+## Task 7 修复记录
+
+### RED
+
+- 在既有示例端到端测试中新增悬臂固定端反力弯矩断言（绝对容差 `1e-6`），并加入 README 过期测试数回归检查后，`python -m pytest tests/test_textbook_examples.py -q` 失败：JSON 缺少 `fixed_reaction_moment_n_mm`，README 仍含“77 项自动化测试”。
+
+### GREEN
+
+- 悬臂示例的 `expected` 现包含固定端反力弯矩 `fixed_reaction_moment_n_mm: 100000.0`。
+- README 改为不含固定数量的自动化测试描述，避免测试总数变化时过期。
+- 修复后，`python -m pytest tests/test_textbook_examples.py -q`：1 passed。
+
+### 最终验证
+
+- `python -m pytest tests/test_textbook_examples.py -q`：1 passed。
+- `python -m py_compile app.py app_styled.py mechanics/*.py ui/*.py utils/*.py vision/*.py`：通过（使用 PowerShell 展开的等价文件列表）。
+- `python -m pytest -q`：139 passed。

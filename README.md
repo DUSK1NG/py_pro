@@ -17,7 +17,7 @@
 - 长度、荷载和弹性模量单位下拉选择；
 - 弹性模量支持 MPa 和 GPa；
 - 可选导出 Markdown 或 PDF 理论分析报告；
-- 77 项自动化测试。
+- 自动化测试覆盖核心计算、图像识别、导出和界面功能。
 
 OpenCV 采用静态图片方案：用户上传未加载图片和加载后图片，完成标记点识别、像素标定、完整挠度曲线和理论/实测对比。本项目不包含视频读取、实时摄像头或连续帧监测功能。
 
@@ -71,7 +71,7 @@ streamlit run app_styled.py
 python -m pytest -q
 ```
 
-当前测试数量为 77 项。GitHub Actions 会在每次推送和 Pull Request 时自动执行测试。
+GitHub Actions 会在每次推送和 Pull Request 时自动执行完整自动化测试。
 
 ### Windows 常见问题
 
