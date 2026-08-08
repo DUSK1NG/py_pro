@@ -56,3 +56,63 @@ python -m pytest tests/test_beam_fem.py -q
 python -m pytest -q
 103 passed in 2.24s
 ```
+
+## Repair TDD record
+
+The following regressions were written before changing `beam_fem.py`.
+
+### Uniform-load section resultants
+
+`test_fem_section_resultants_vary_quadratically_within_uniform_load` was run
+as part of the focused RED command:
+
+```text
+python -m pytest tests/test_beam_fem.py -q
+3 failed, 6 passed
+```
+
+It failed because the shear difference from 650 mm to 750 mm was
+`-195.12195056676865 N`, rather than the required `-200 N`; the former
+recovery used only the cubic displacement field and therefore omitted the
+uniform-load particular solution.  The repair adds the local uniform-load
+terms to recovered shear and bending moment.  GREEN command:
+
+```text
+python -m pytest tests/test_beam_fem.py -q
+9 passed in 0.81s
+```
+
+Final suite verification after all three repairs:
+
+```text
+python -m pytest -q
+106 passed in 1.87s
+```
+
+### Point-load node limits in segments
+
+`test_fem_segments_preserve_both_shear_limits_at_a_point_load_node` was run
+in the same RED command above.  It failed because the last left position was
+exactly `500.0`, so both adjoining segments queried the right-side value.
+The repair queries the left endpoint with `nextafter(end, start)` and the
+right endpoint with `nextafter(start, end)`.  GREEN command:
+
+```text
+python -m pytest tests/test_beam_fem.py -q
+9 passed in 0.81s
+```
+
+### Extreme-dimension mechanism detection
+
+`test_fem_solves_extreme_dimensioned_cantilever_without_false_mechanism` was
+run in the same RED command above.  It failed with
+`ProblemInputError: 机构或约束不足，刚度矩阵不可解`; the unscaled numerical rank
+test treated translational stiffness as zero relative to rotational entries.
+The repair first uses the original solve path where it is full rank, and only
+when that rank test fails, rescales rotational degrees of freedom by the beam
+length before rechecking rank and solving.  GREEN command:
+
+```text
+python -m pytest tests/test_beam_fem.py -q
+9 passed in 0.81s
+```

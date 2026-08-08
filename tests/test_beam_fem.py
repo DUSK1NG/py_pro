@@ -91,3 +91,43 @@ def test_fem_rejects_a_fully_free_beam_as_a_mechanism():
 
     with pytest.raises(ProblemInputError):
         solve_fem(problem)
+
+
+def test_fem_section_resultants_vary_quadratically_within_uniform_load():
+    result = solve_fem(
+        simple_problem(distributed_loads=[DistributedLoad(600.0, 800.0, -2.0)])
+    )
+
+    shear_650 = result.shear_at(650.0)
+    shear_750 = result.shear_at(750.0)
+    assert shear_750 - shear_650 == pytest.approx(-200.0)
+    assert (
+        result.moment_at(750.0)
+        - 2.0 * result.moment_at(700.0)
+        + result.moment_at(650.0)
+    ) / 50.0**2 == pytest.approx(-2.0)
+
+
+def test_fem_segments_preserve_both_shear_limits_at_a_point_load_node():
+    result = solve_fem(
+        simple_problem(point_loads=[PointLoad(500.0, -1000.0)]), max_elements=2
+    )
+    left, right = result.segments
+
+    assert left.positions_mm[-1] < 500.0
+    assert right.positions_mm[0] > 500.0
+    assert left.shear_n[-1] != pytest.approx(right.shear_n[0])
+
+
+def test_fem_solves_extreme_dimensioned_cantilever_without_false_mechanism():
+    result = solve_fem(
+        simple_problem(
+            length_mm=1e9,
+            elastic_modulus_mpa=1.0,
+            inertia_mm4=1.0,
+            supports=[Support(0.0, "fixed"), Support(1e9, "free")],
+            point_loads=[PointLoad(1e9, -1.0)],
+        )
+    )
+
+    assert result.reactions[0].vertical_n == pytest.approx(1.0)

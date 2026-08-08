@@ -49,7 +49,9 @@ def solve_fem(problem: BeamProblem, max_elements: int = 200) -> BeamSolution:
         load_vector[2 * node] += float(point_load.force_n)
 
     constrained = _constrained_dofs(problem, index_by_position)
-    displacement = _solve_reduced_system(stiffness, load_vector, constrained)
+    displacement = _solve_reduced_system(
+        stiffness, load_vector, constrained, float(problem.length_mm)
+    )
     residual = stiffness @ displacement - load_vector
     reactions = _reactions(problem, index_by_position, residual)
     segments = _segments(
@@ -179,7 +181,10 @@ def _constrained_dofs(problem: BeamProblem, index_by_position: dict[float, int])
 
 
 def _solve_reduced_system(
-    stiffness: np.ndarray, load_vector: np.ndarray, constrained: list[int]
+    stiffness: np.ndarray,
+    load_vector: np.ndarray,
+    constrained: list[int],
+    characteristic_length: float,
 ) -> np.ndarray:
     all_dofs = np.arange(len(load_vector))
     free = np.setdiff1d(all_dofs, constrained)
@@ -187,12 +192,26 @@ def _solve_reduced_system(
     if not len(free):
         return displacement
     reduced_stiffness = stiffness[np.ix_(free, free)]
-    if np.linalg.matrix_rank(reduced_stiffness) != len(free):
+    if np.linalg.matrix_rank(reduced_stiffness) == len(free):
+        try:
+            displacement[free] = np.linalg.solve(
+                reduced_stiffness, load_vector[free]
+            )
+            return displacement
+        except np.linalg.LinAlgError as error:
+            raise ProblemInputError(_SOLVE_ERROR) from error
+
+    dof_scale = np.ones(len(load_vector))
+    dof_scale[1::2] = 1.0 / characteristic_length
+    reduced_scale = dof_scale[free]
+    scaled_stiffness = reduced_scale[:, None] * reduced_stiffness * reduced_scale
+    if np.linalg.matrix_rank(scaled_stiffness) != len(free):
         raise ProblemInputError(_SOLVE_ERROR)
     try:
-        displacement[free] = np.linalg.solve(
-            reduced_stiffness, load_vector[free]
+        scaled_displacement = np.linalg.solve(
+            scaled_stiffness, reduced_scale * load_vector[free]
         )
+        displacement[free] = reduced_scale * scaled_displacement
     except np.linalg.LinAlgError as error:
         raise ProblemInputError(_SOLVE_ERROR) from error
     return displacement
@@ -231,6 +250,10 @@ def _segments(
     segments: list[SegmentResult] = []
     for element, (start, end) in enumerate(zip(coordinates, coordinates[1:])):
         positions = [start, (start + end) / 2.0, end]
+        if element:
+            positions[0] = math.nextafter(start, end)
+        if element < len(coordinates) - 2:
+            positions[-1] = math.nextafter(end, start)
         segments.append(
             SegmentResult(
                 start_mm=start,
@@ -303,12 +326,21 @@ def _section_resultants(
     def shear_at(position: float) -> float:
         element, xi = _locate_element(coordinates, position)
         length = coordinates[element + 1] - coordinates[element]
+        local_position = xi * length
+        intensity = _intensity_on_element(
+            problem, coordinates[element], coordinates[element + 1]
+        )
         derivatives = np.array([12.0 / length**3, 6.0 / length**2, -12.0 / length**3, 6.0 / length**2])
-        return float(rigidity * derivatives @ displacement[_element_dofs(element)])
+        homogeneous = rigidity * derivatives @ displacement[_element_dofs(element)]
+        return float(homogeneous + intensity * (local_position - length / 2.0))
 
     def moment_at(position: float) -> float:
         element, xi = _locate_element(coordinates, position)
         length = coordinates[element + 1] - coordinates[element]
+        local_position = xi * length
+        intensity = _intensity_on_element(
+            problem, coordinates[element], coordinates[element + 1]
+        )
         derivatives = np.array(
             [
                 (-6.0 + 12.0 * xi) / length**2,
@@ -317,7 +349,13 @@ def _section_resultants(
                 (-2.0 + 6.0 * xi) / length,
             ]
         )
-        return float(rigidity * derivatives @ displacement[_element_dofs(element)])
+        homogeneous = rigidity * derivatives @ displacement[_element_dofs(element)]
+        load_particular = intensity * (
+            local_position**2 / 2.0
+            - length * local_position / 2.0
+            + length**2 / 12.0
+        )
+        return float(homogeneous + load_particular)
 
     return shear_at, moment_at
 
