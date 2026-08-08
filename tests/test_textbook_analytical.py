@@ -3,6 +3,7 @@
 import pytest
 
 from mechanics.analytical_beam import (
+    _critical_positions,
     solve_cantilever,
     solve_simply_supported,
     supports_analytical,
@@ -99,3 +100,59 @@ def test_only_canonical_support_arrangements_are_analytical():
     assert not supports_analytical(
         simple_problem(supports=[Support(0.0, "pin"), Support(1000.0, "pin")])
     )
+
+
+def test_segments_keep_point_load_shear_jump_at_the_shared_breakpoint():
+    result = solve_simply_supported(
+        simple_problem(point_loads=[PointLoad(500.0, -1000.0)])
+    )
+
+    left_segment, right_segment = result.segments
+
+    assert left_segment.positions_mm[-1] < 500.0
+    assert right_segment.positions_mm[0] > 500.0
+    assert left_segment.shear_n[-1] == pytest.approx(500.0)
+    assert right_segment.shear_n[0] == pytest.approx(-500.0)
+
+
+def test_multiple_point_loads_and_partial_udls_find_the_internal_maximum_deflection():
+    problem = simple_problem(
+        point_loads=[PointLoad(310.0, -700.0), PointLoad(760.0, 300.0)],
+        distributed_loads=[
+            DistributedLoad(360.0, 365.0, -90.0),
+            DistributedLoad(650.0, 655.0, 50.0),
+        ],
+    )
+
+    result = solve_simply_supported(problem)
+
+    assert result.max_deflection_position_mm == pytest.approx(404.8234069)
+    assert result.max_deflection_mm == pytest.approx(-0.0608987672)
+    assert result.theta_at(result.max_deflection_position_mm) == pytest.approx(0.0)
+
+
+def test_critical_position_search_finds_all_roots_within_each_breakpoint_span():
+    roots = _critical_positions(
+        1.0,
+        lambda position: (position - 0.1001) * (position - 0.1002),
+        [0.0, 0.3, 1.0],
+    )
+
+    assert roots == pytest.approx([0.0, 0.1001, 0.1002, 0.3, 1.0])
+
+
+def test_right_fixed_cantilever_with_internal_loads_is_supported():
+    problem = simple_problem(
+        supports=[Support(0.0, "free"), Support(1000.0, "fixed")],
+        point_loads=[PointLoad(250.0, -200.0), PointLoad(700.0, 100.0)],
+        distributed_loads=[
+            DistributedLoad(300.0, 450.0, -2.0),
+            DistributedLoad(600.0, 800.0, 1.0),
+        ],
+    )
+
+    result = solve_cantilever(problem)
+
+    assert result.deflection_mm[-1] == pytest.approx(0.0)
+    assert result.theta_at(1000.0) == pytest.approx(0.0)
+    assert result.checks["sum_vertical_n"] == pytest.approx(0.0, abs=1e-8)

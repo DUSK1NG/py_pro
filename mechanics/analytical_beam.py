@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+import math
 from typing import Literal
 
 from mechanics.textbook_models import (
@@ -176,7 +177,7 @@ def _build_solution(
         position for segment in segments for position in segment.positions_mm
     )
     deflection_mm = [deflection_at(position) for position in x_mm]
-    critical_positions = _critical_positions(length, theta_at)
+    critical_positions = _critical_positions(length, theta_at, _breakpoints(problem))
     max_position = min(critical_positions, key=deflection_at)
     max_deflection = deflection_at(max_position)
 
@@ -343,9 +344,17 @@ def _segments(
     deflection_at: Callable[[float], float],
 ) -> list[SegmentResult]:
     breakpoints = _breakpoints(problem)
+    point_load_positions = {float(load.position_mm) for load in problem.point_loads}
     segments: list[SegmentResult] = []
     for start, end in zip(breakpoints, breakpoints[1:]):
         positions = [start + (end - start) * index / 20.0 for index in range(21)]
+        # A point load makes shear discontinuous.  Preserve each adjacent
+        # segment's one-sided physical value instead of assigning V(a+) to
+        # the segment ending at a.
+        if end in point_load_positions:
+            positions[-1] = math.nextafter(end, start)
+        if start in point_load_positions:
+            positions[0] = math.nextafter(start, end)
         segments.append(
             SegmentResult(
                 start_mm=start,
@@ -373,23 +382,85 @@ def _unique_positions(positions: object) -> list[float]:
     return sorted({float(position) for position in positions})
 
 
-def _critical_positions(length: float, theta_at: Callable[[float], float]) -> list[float]:
-    samples = [length * index / 2000.0 for index in range(2001)]
-    candidates = [0.0, length]
-    for left, right in zip(samples, samples[1:]):
-        left_value = theta_at(left)
-        right_value = theta_at(right)
-        if abs(left_value) <= _EPSILON:
-            candidates.append(left)
-        if left_value * right_value < 0.0:
-            for _ in range(60):
-                middle = (left + right) / 2.0
-                if theta_at(left) * theta_at(middle) <= 0.0:
-                    right = middle
-                else:
-                    left = middle
-            candidates.append((left + right) / 2.0)
+def _critical_positions(
+    length: float,
+    theta_at: Callable[[float], float],
+    breakpoints: list[float],
+) -> list[float]:
+    """返回每个荷载/支座分段内的转角零点及所有分段端点。"""
+    del length  # 端点由 breakpoints 提供；保留参数以兼容内部调用约定。
+    candidates: list[float] = []
+    for start, end in zip(breakpoints, breakpoints[1:]):
+        candidates.extend((start, end))
+        candidates.extend(_theta_roots_in_span(theta_at, start, end))
     return _unique_positions(candidates)
+
+
+def _theta_roots_in_span(
+    theta_at: Callable[[float], float], start: float, end: float
+) -> list[float]:
+    """利用分段三次转角式的导数分界，可靠定位该段的全部零点。"""
+    span = end - start
+    if span <= 0.0:
+        return []
+
+    values = [theta_at(start + span * fraction) for fraction in (0.0, 1 / 3, 2 / 3, 1.0)]
+    a, b, c = _cubic_coefficients(values)
+    stationary = _quadratic_roots(3.0 * a, 2.0 * b, c)
+    normalized_bounds = [0.0] + [
+        root for root in stationary if _EPSILON < root < 1.0 - _EPSILON
+    ] + [1.0]
+    normalized_bounds.sort()
+
+    roots: list[float] = []
+    for lower, upper in zip(normalized_bounds, normalized_bounds[1:]):
+        lower_position = start + span * lower
+        upper_position = start + span * upper
+        lower_value = theta_at(lower_position)
+        upper_value = theta_at(upper_position)
+        if abs(lower_value) <= _EPSILON:
+            roots.append(lower_position)
+        if lower_value * upper_value < 0.0:
+            roots.append(_bisect_zero(theta_at, lower_position, upper_position))
+        if abs(upper_value) <= _EPSILON:
+            roots.append(upper_position)
+    return _unique_positions(roots)
+
+
+def _cubic_coefficients(values: list[float]) -> tuple[float, float, float]:
+    """由 t=0、1/3、2/3、1 的函数值恢复 a*t³+b*t²+c*t+d。"""
+    y1 = 27.0 * (values[1] - values[0])
+    y2 = 27.0 * (values[2] - values[0])
+    y3 = values[3] - values[0]
+    a = (y1 - y2 + 9.0 * y3) / 2.0
+    c = (y1 - 3.0 * y3 + 2.0 * a) / 6.0
+    b = y3 - a - c
+    return a, b, c
+
+
+def _quadratic_roots(a: float, b: float, c: float) -> list[float]:
+    """求至多二次多项式的实根，系数退化时保持稳定。"""
+    if abs(a) <= _EPSILON:
+        return [] if abs(b) <= _EPSILON else [-c / b]
+    discriminant = b * b - 4.0 * a * c
+    if discriminant < -_EPSILON:
+        return []
+    root_discriminant = math.sqrt(max(0.0, discriminant))
+    return [(-b - root_discriminant) / (2.0 * a), (-b + root_discriminant) / (2.0 * a)]
+
+
+def _bisect_zero(
+    theta_at: Callable[[float], float], left: float, right: float
+) -> float:
+    left_value = theta_at(left)
+    for _ in range(60):
+        middle = (left + right) / 2.0
+        middle_value = theta_at(middle)
+        if left_value * middle_value <= 0.0:
+            right = middle
+        else:
+            left, left_value = middle, middle_value
+    return (left + right) / 2.0
 
 
 def _checked_curve(
