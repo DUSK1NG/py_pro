@@ -43,3 +43,4 @@
 2. RED：`python -m pytest tests/test_textbook_solver.py -q` → `2 failed, 7 passed`。两个非标准两支座参数均得到错误的 `analytical` 方法。
 3. GREEN：公共入口改为仅在 `pin@0`、`roller@L`（或端部 `fixed` 且其余为 `free` 的悬臂）时选择解析分支。
 4. GREEN：`python -m pytest tests/test_textbook_solver.py -q` → `9 passed`。
+5. 修复后的全量验证：`python -m pytest -q` → `115 passed`。
