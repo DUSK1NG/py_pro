@@ -64,21 +64,25 @@ def test_textbook_markdown_includes_shear_and_moment_values_for_each_segment():
     ) in report
 
 
-def test_textbook_csv_has_stable_curve_header_and_blank_non_reaction_rows():
+def test_textbook_csv_preserves_legacy_columns_and_separates_reaction_rows():
     problem, solution = _solved_problem()
 
     rows = list(csv.DictReader(StringIO(build_textbook_csv(solution))))
 
-    assert rows[0].keys() == {"x_mm", "deflection_mm", "reaction_vertical_n"}
-    assert any(row["reaction_vertical_n"] == "" for row in rows)
-    assert next(row for row in rows if float(row["x_mm"]) == 0.0)["reaction_vertical_n"] == "500.0"
-    assert next(row for row in rows if float(row["x_mm"]) == 1000.0)["reaction_vertical_n"] == "500.0"
+    assert list(rows[0])[:3] == ["x_mm", "deflection_mm", "reaction_vertical_n"]
+    curve_rows = [row for row in rows if row["row_type"] == "curve"]
+    reaction_rows = [row for row in rows if row["row_type"] == "reaction"]
+    assert curve_rows and all(row["reaction_vertical_n"] == "" for row in curve_rows)
+    assert next(row for row in reaction_rows if float(row["x_mm"]) == 0.0)["reaction_vertical_n"] == "500.0"
+    assert next(row for row in reaction_rows if float(row["x_mm"]) == 1000.0)["reaction_vertical_n"] == "500.0"
 
 
 def test_textbook_csv_is_available_from_the_export_module():
     _, solution = _solved_problem()
 
-    assert public_build_textbook_csv(solution).startswith("x_mm,deflection_mm,reaction_vertical_n\n")
+    assert public_build_textbook_csv(solution).startswith(
+        "x_mm,deflection_mm,reaction_vertical_n,"
+    )
 
 
 def test_textbook_pdf_report_returns_pdf_bytes():

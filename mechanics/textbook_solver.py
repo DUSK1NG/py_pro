@@ -3,32 +3,19 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from dataclasses import dataclass
-from typing import Literal
+from dataclasses import replace
 
 from mechanics.analytical_beam import (
     solve_cantilever,
     solve_simply_supported,
 )
 from mechanics.beam_fem import solve_fem
-from mechanics.textbook_models import BeamProblem, BeamSolution, ProblemInputError
-
-
-ClassificationCategory = Literal["静定", "超静定（数值解）", "机构/约束不足"]
-SolverMethod = Literal["analytical", "fem"]
-
-
-@dataclass(frozen=True)
-class ProblemClassification:
-    """梁的静定性及应采用的求解方法。"""
-
-    category: ClassificationCategory
-    method: SolverMethod
-
-    @property
-    def status(self) -> ClassificationCategory:
-        """分类文字的同义访问器，便于展示层直接使用。"""
-        return self.category
+from mechanics.textbook_models import (
+    BeamProblem,
+    BeamSolution,
+    ProblemClassification,
+    ProblemInputError,
+)
 
 
 def classify_problem(problem: BeamProblem) -> ProblemClassification:
@@ -105,11 +92,7 @@ def _normalize_result(
     result: BeamSolution, classification: ProblemClassification
 ) -> BeamSolution:
     """把两个底层求解器的传输模型补齐为公共结果契约。"""
-    result.method = classification.method
-    result.classification = classification
-    result.shear_segments = result.segments
-    result.moment_segments = result.segments
-    metadata = dict(getattr(result, "metadata", {}))
+    metadata = dict(result.metadata)
     metadata.update(
         {
             "method": classification.method,
@@ -118,5 +101,11 @@ def _normalize_result(
             "deflection_sign": "向下为负",
         }
     )
-    result.metadata = metadata
-    return result
+    return replace(
+        result,
+        method=classification.method,
+        classification=classification,
+        shear_segments=result.segments,
+        moment_segments=result.segments,
+        metadata=metadata,
+    )

@@ -10,9 +10,11 @@ import numpy as np
 from mechanics.textbook_models import (
     BeamProblem,
     BeamSolution,
+    ProblemClassification,
     ProblemInputError,
     Reaction,
     SegmentResult,
+    build_diagram_data,
 )
 
 
@@ -60,7 +62,7 @@ def solve_fem(problem: BeamProblem, max_elements: int = 200) -> BeamSolution:
     sampled_positions, sampled_deflections = _deflection_samples(
         coordinates, displacement
     )
-    min_index = int(np.argmin(sampled_deflections))
+    max_index = int(np.argmax(np.abs(sampled_deflections)))
 
     def deflection_at(position: float) -> float:
         element, xi = _locate_element(coordinates, position)
@@ -74,34 +76,66 @@ def solve_fem(problem: BeamProblem, max_elements: int = 200) -> BeamSolution:
     shear_at, moment_at = _section_resultants(
         coordinates, displacement, rigidity, problem, stiffness, load_vector
     )
-    solution = BeamSolution(
+    (
+        max_shear,
+        max_shear_position,
+        max_moment,
+        max_moment_position,
+    ) = _curve_extrema(
+        coordinates, problem, shear_at, moment_at
+    )
+    element_lengths = [end - start for start, end in zip(coordinates, coordinates[1:])]
+    nodal_displacements = displacement[::2].tolist()
+    nodal_rotations = displacement[1::2].tolist()
+    return BeamSolution(
+        method="fem",
+        classification=_fem_classification(problem),
+        x_mm=coordinates,
+        deflection_mm=nodal_displacements,
         reactions=reactions,
         segments=segments,
-        max_deflection_mm=float(sampled_deflections[min_index]),
-        max_deflection_position_mm=float(sampled_positions[min_index]),
+        max_deflection_mm=float(sampled_deflections[max_index]),
+        max_deflection_position_mm=float(sampled_positions[max_index]),
+        shear_segments=segments,
+        moment_segments=segments,
+        checks=_equilibrium_checks(problem, reactions),
+        steps=[
+            "符号约定：向上力为正、向下挠度为负。",
+            "每节点自由度为 [v, theta]，采用两节点 Euler–Bernoulli 梁单元。",
+            f"网格：{len(coordinates)} 个节点、{element_count} 个单元。",
+            "支座反力由 K @ u - F 恢复。",
+        ],
+        warnings=[
+            "有限元采用 Euler–Bernoulli 梁：未考虑轴向、扭转、剪切变形或大挠度。"
+        ],
+        metadata={
+            "node_count": len(coordinates),
+            "element_count": element_count,
+            "mesh": {
+                "node_count": len(coordinates),
+                "element_count": element_count,
+                "minimum_element_length_mm": min(element_lengths),
+                "maximum_element_length_mm": max(element_lengths),
+                "load_and_support_boundaries_preserved": True,
+            },
+            "accuracy": {
+                "model": "两节点 Euler–Bernoulli 梁单元",
+                "description": "位移采用三次插值；结果精度受网格密度影响，可增加单元数作收敛校核。",
+            },
+        },
+        node_positions_mm=coordinates,
+        displacements_mm=nodal_displacements,
+        rotations_rad=nodal_rotations,
+        deflection_at=deflection_at,
+        theta_at=theta_at,
+        shear_at=shear_at,
+        moment_at=moment_at,
+        max_shear=max_shear,
+        max_shear_position=max_shear_position,
+        max_moment=max_moment,
+        max_moment_position=max_moment_position,
+        diagram_data=build_diagram_data(problem, reactions),
     )
-    solution.node_positions_mm = coordinates
-    solution.displacements_mm = displacement[::2].tolist()
-    solution.rotations_rad = displacement[1::2].tolist()
-    solution.x_mm = coordinates
-    solution.deflection_mm = solution.displacements_mm
-    solution.theta_at = theta_at
-    solution.deflection_at = deflection_at
-    solution.shear_at = shear_at
-    solution.moment_at = moment_at
-    solution.metadata = {"node_count": len(coordinates), "element_count": element_count}
-    solution.checks = _equilibrium_checks(problem, reactions)
-    solution.warnings = [
-        "有限元采用 Euler–Bernoulli 梁：未考虑轴向、扭转、剪切变形或大挠度。"
-    ]
-    solution.steps = [
-        "符号约定：向上力为正、向下挠度为负。",
-        "每节点自由度为 [v, theta]，采用两节点 Euler–Bernoulli 梁单元。",
-        f"网格：{len(coordinates)} 个节点、{element_count} 个单元。",
-        "支座反力由 K @ u - F 恢复。",
-    ]
-    solution.method = "fem"
-    return solution
 
 
 def _build_mesh(problem: BeamProblem, max_elements: int) -> list[float]:
@@ -270,9 +304,55 @@ def _segments(
                     )
                     for position in positions
                 ],
+                shear_expression="数值采样（FEM）",
+                moment_expression="数值采样（FEM）",
             )
         )
     return segments
+
+
+def _fem_classification(problem: BeamProblem) -> ProblemClassification:
+    reaction_components = sum(
+        2 if support.kind == "fixed" else 1
+        for support in problem.supports
+        if support.kind != "free"
+    )
+    category = "超静定（数值解）" if reaction_components > 2 else "静定"
+    return ProblemClassification(category, "fem")
+
+
+def _curve_extrema(
+    coordinates: list[float],
+    problem: BeamProblem,
+    shear_at: Callable[[float], float],
+    moment_at: Callable[[float], float],
+) -> tuple[float, float, float, float]:
+    """比较每个单元的单侧端点，并在 V=0 处比较弯矩。"""
+    shear_candidates: list[tuple[float, float]] = []
+    moment_candidates: list[tuple[float, float]] = []
+    for start, end in zip(coordinates, coordinates[1:]):
+        start_query = math.nextafter(start, end)
+        end_query = math.nextafter(end, start)
+        shear_start = shear_at(start_query)
+        shear_candidates.extend(
+            [(shear_start, start), (shear_at(end_query), end)]
+        )
+        moment_candidates.extend(
+            [(moment_at(start), start), (moment_at(end), end)]
+        )
+        intensity = _intensity_on_element(problem, start, end)
+        if abs(intensity) > _EPSILON:
+            stationary = start - shear_start / intensity
+            if start < stationary < end:
+                moment_candidates.append((moment_at(stationary), stationary))
+
+    max_shear, max_shear_position = max(
+        shear_candidates, key=lambda item: abs(item[0]), default=(0.0, 0.0)
+    )
+    max_moment, max_moment_position = max(
+        moment_candidates, key=lambda item: abs(item[0]), default=(0.0, 0.0)
+    )
+    return max_shear, max_shear_position, max_moment, max_moment_position
 
 
 def _deflection_samples(

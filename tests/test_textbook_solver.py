@@ -1,5 +1,7 @@
 """公共教材梁题入口的分流和结果契约。"""
 
+from dataclasses import asdict, fields
+
 import pytest
 
 from mechanics.textbook_models import (
@@ -37,6 +39,7 @@ def test_canonical_simple_support_uses_analytical_branch_and_normalized_contract
     assert result.method == "analytical"
     assert result.classification == ProblemClassification("静定", "analytical")
     assert result.max_deflection_mm < 0.0
+    assert set(asdict(result)) == {item.name for item in fields(type(result))}
     for field in (
         "reactions",
         "shear_segments",

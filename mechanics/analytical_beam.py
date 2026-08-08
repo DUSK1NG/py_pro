@@ -11,10 +11,12 @@ from mechanics.textbook_models import (
     BeamSolution,
     DistributedLoad,
     PointLoad,
+    ProblemClassification,
     ProblemInputError,
     Reaction,
     SegmentResult,
     Support,
+    build_diagram_data,
 )
 
 
@@ -178,29 +180,48 @@ def _build_solution(
     )
     deflection_mm = [deflection_at(position) for position in x_mm]
     critical_positions = _critical_positions(length, theta_at, _breakpoints(problem))
-    max_position = min(critical_positions, key=deflection_at)
+    max_position = max(critical_positions, key=lambda position: abs(deflection_at(position)))
     max_deflection = deflection_at(max_position)
+    (
+        max_shear,
+        max_shear_position,
+        max_moment,
+        max_moment_position,
+    ) = _curve_extrema(
+        problem, shear_at, moment_at
+    )
 
-    solution = BeamSolution(
+    checked_shear = _checked_curve(shear_at, length)
+    checked_moment = _checked_curve(moment_at, length)
+    checked_theta = _checked_curve(theta_at, length)
+    checked_deflection = _checked_curve(deflection_at, length)
+    return BeamSolution(
+        method="analytical",
+        classification=ProblemClassification("静定", "analytical"),
+        x_mm=x_mm,
+        deflection_mm=deflection_mm,
         reactions=reactions,
         segments=segments,
         max_deflection_mm=max_deflection,
         max_deflection_position_mm=max_position,
+        shear_segments=segments,
+        moment_segments=segments,
+        checks=_equilibrium_checks(problem, reactions),
+        steps=_steps(problem, reactions, beam_kind),
+        warnings=[
+            "仅考虑竖向荷载与 Euler–Bernoulli 弯曲；未计算轴向、扭转、剪切变形或大挠度。"
+        ],
+        metadata={"solution_strategy": "Macaulay 分段解析积分"},
+        deflection_at=checked_deflection,
+        theta_at=checked_theta,
+        shear_at=checked_shear,
+        moment_at=checked_moment,
+        max_shear=max_shear,
+        max_shear_position=max_shear_position,
+        max_moment=max_moment,
+        max_moment_position=max_moment_position,
+        diagram_data=build_diagram_data(problem, reactions),
     )
-    # BeamSolution is intentionally a small Task 1 transport model.  These
-    # fields are the normalized contract consumed by later textbook modules.
-    solution.x_mm = x_mm
-    solution.deflection_mm = deflection_mm
-    solution.shear_at = _checked_curve(shear_at, length)
-    solution.moment_at = _checked_curve(moment_at, length)
-    solution.theta_at = _checked_curve(theta_at, length)
-    solution.checks = _equilibrium_checks(problem, reactions)
-    solution.steps = _steps(problem, reactions, beam_kind)
-    solution.warnings = [
-        "仅考虑竖向荷载与 Euler–Bernoulli 弯曲；未计算轴向、扭转、剪切变形或大挠度。"
-    ]
-    solution.method = "analytical"
-    return solution
 
 
 def _canonical_problem(
@@ -363,9 +384,93 @@ def _segments(
                 shear_n=[shear_at(position) for position in positions],
                 bending_moment_n_mm=[moment_at(position) for position in positions],
                 deflection_mm=[deflection_at(position) for position in positions],
+                shear_expression=_shear_expression(
+                    problem, start, end, shear_at
+                ),
+                moment_expression=_moment_expression(
+                    problem, start, end, shear_at, moment_at
+                ),
             )
         )
     return segments
+
+
+def _active_intensity(problem: BeamProblem, start: float, end: float) -> float:
+    midpoint = (start + end) / 2.0
+    return sum(
+        float(load.intensity_n_per_mm)
+        for load in problem.distributed_loads
+        if float(load.start_mm) <= midpoint <= float(load.end_mm)
+    )
+
+
+def _right_limit(start: float, end: float) -> float:
+    return math.nextafter(start, end) if start < end else start
+
+
+def _shear_expression(
+    problem: BeamProblem,
+    start: float,
+    end: float,
+    shear_at: Callable[[float], float],
+) -> str:
+    shear_start = shear_at(_right_limit(start, end))
+    intensity = _active_intensity(problem, start, end)
+    return (
+        f"V(x) = {shear_start:.6g} + ({intensity:.6g})(x - {start:.6g}), "
+        f"{start:.6g} ≤ x ≤ {end:.6g} mm"
+    )
+
+
+def _moment_expression(
+    problem: BeamProblem,
+    start: float,
+    end: float,
+    shear_at: Callable[[float], float],
+    moment_at: Callable[[float], float],
+) -> str:
+    shear_start = shear_at(_right_limit(start, end))
+    moment_start = moment_at(start)
+    intensity = _active_intensity(problem, start, end)
+    return (
+        f"M(x) = {moment_start:.6g} + ({shear_start:.6g})(x - {start:.6g}) "
+        f"+ ({0.5 * intensity:.6g})(x - {start:.6g})², "
+        f"{start:.6g} ≤ x ≤ {end:.6g} mm"
+    )
+
+
+def _curve_extrema(
+    problem: BeamProblem,
+    shear_at: Callable[[float], float],
+    moment_at: Callable[[float], float],
+) -> tuple[float, float, float, float]:
+    """精确比较各段单侧端点，并在 V=0 处比较弯矩。"""
+    shear_candidates: list[tuple[float, float]] = []
+    moment_candidates: list[tuple[float, float]] = []
+    breakpoints = _breakpoints(problem)
+    for start, end in zip(breakpoints, breakpoints[1:]):
+        start_query = math.nextafter(start, end)
+        end_query = math.nextafter(end, start)
+        shear_start = shear_at(start_query)
+        shear_candidates.extend(
+            [(shear_start, start), (shear_at(end_query), end)]
+        )
+        moment_candidates.extend(
+            [(moment_at(start), start), (moment_at(end), end)]
+        )
+        intensity = _active_intensity(problem, start, end)
+        if abs(intensity) > _EPSILON:
+            stationary = start - shear_start / intensity
+            if start < stationary < end:
+                moment_candidates.append((moment_at(stationary), stationary))
+
+    max_shear, max_shear_position = max(
+        shear_candidates, key=lambda item: abs(item[0]), default=(0.0, 0.0)
+    )
+    max_moment, max_moment_position = max(
+        moment_candidates, key=lambda item: abs(item[0]), default=(0.0, 0.0)
+    )
+    return max_shear, max_shear_position, max_moment, max_moment_position
 
 
 def _breakpoints(problem: BeamProblem) -> list[float]:

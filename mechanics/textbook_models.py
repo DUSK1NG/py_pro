@@ -4,15 +4,30 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 import math
+from collections.abc import Callable
 from typing import Literal
 
 
 SupportKind = Literal["fixed", "pin", "roller", "free"]
+ClassificationCategory = Literal["静定", "超静定（数值解）", "机构/约束不足"]
+SolverMethod = Literal["analytical", "fem"]
 _SUPPORT_KINDS = frozenset({"fixed", "pin", "roller", "free"})
 
 
 class ProblemInputError(ValueError):
     """梁问题的几何、材料或荷载输入不合法。"""
+
+
+@dataclass(frozen=True)
+class ProblemClassification:
+    """梁的静定性及求解方法。"""
+
+    category: ClassificationCategory
+    method: SolverMethod
+
+    @property
+    def status(self) -> ClassificationCategory:
+        return self.category
 
 
 @dataclass
@@ -51,14 +66,46 @@ class SegmentResult:
     shear_n: list[float] = field(default_factory=list)
     bending_moment_n_mm: list[float] = field(default_factory=list)
     deflection_mm: list[float] = field(default_factory=list)
+    shear_expression: str = ""
+    moment_expression: str = ""
 
 
 @dataclass
 class BeamSolution:
+    method: str = ""
+    classification: object | None = None
+    x_mm: list[float] = field(default_factory=list)
+    deflection_mm: list[float] = field(default_factory=list)
     reactions: list[Reaction] = field(default_factory=list)
     segments: list[SegmentResult] = field(default_factory=list)
     max_deflection_mm: float = 0.0
     max_deflection_position_mm: float = 0.0
+    shear_segments: list[SegmentResult] = field(default_factory=list)
+    moment_segments: list[SegmentResult] = field(default_factory=list)
+    checks: dict[str, float] = field(default_factory=dict)
+    steps: list[str] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
+    metadata: dict[str, object] = field(default_factory=dict)
+    node_positions_mm: list[float] = field(default_factory=list)
+    displacements_mm: list[float] = field(default_factory=list)
+    rotations_rad: list[float] = field(default_factory=list)
+    deflection_at: Callable[[float], float] | None = field(
+        default=None, repr=False, compare=False
+    )
+    theta_at: Callable[[float], float] | None = field(
+        default=None, repr=False, compare=False
+    )
+    shear_at: Callable[[float], float] | None = field(
+        default=None, repr=False, compare=False
+    )
+    moment_at: Callable[[float], float] | None = field(
+        default=None, repr=False, compare=False
+    )
+    max_shear: float = 0.0
+    max_shear_position: float = 0.0
+    max_moment: float = 0.0
+    max_moment_position: float = 0.0
+    diagram_data: dict[str, object] = field(default_factory=dict)
 
 
 @dataclass
@@ -134,3 +181,44 @@ def _positive_finite(value: object, name: str) -> float:
 def _validate_position(position: float, length: float, name: str) -> None:
     if not 0 <= position <= length:
         raise ProblemInputError(f"{name}必须位于梁长范围内。")
+
+
+def build_diagram_data(
+    problem: BeamProblem, reactions: list[Reaction]
+) -> dict[str, object]:
+    """返回 UI 与报告共用的受力简图数据。"""
+    return {
+        "beam_length_mm": float(problem.length_mm),
+        "supports": [
+            {
+                "position_mm": float(support.position_mm),
+                "kind": support.kind,
+                "label": support.label,
+            }
+            for support in problem.supports
+        ],
+        "point_loads": [
+            {
+                "position_mm": float(load.position_mm),
+                "force_n": float(load.force_n),
+            }
+            for load in problem.point_loads
+        ],
+        "distributed_loads": [
+            {
+                "start_mm": float(load.start_mm),
+                "end_mm": float(load.end_mm),
+                "intensity_n_per_mm": float(load.intensity_n_per_mm),
+            }
+            for load in problem.distributed_loads
+        ],
+        "reactions": [
+            {
+                "position_mm": float(reaction.position_mm),
+                "vertical_n": float(reaction.vertical_n),
+                "moment_n_mm": float(reaction.moment_n_mm),
+                "support_kind": reaction.support_kind,
+            }
+            for reaction in reactions
+        ],
+    }

@@ -354,19 +354,62 @@ def render_textbook_solver() -> BeamSolution | None:
         st.line_chart(charts, x="位置（mm）", y="挠度（mm）", width="stretch")
 
     st.subheader("分段结果")
+    segment_rows = []
+    for segment in solution.segments:
+        segment_rows.append(
+            {
+                "起点（mm）": segment.start_mm,
+                "终点（mm）": segment.end_mm,
+                "V(x)": segment.shear_expression,
+                "M(x)": segment.moment_expression,
+                "采样点数": len(segment.positions_mm),
+            }
+        )
+    st.dataframe(
+        pd.DataFrame(segment_rows),
+        hide_index=True,
+    )
+
+    st.subheader("剪力、弯矩与挠度极值")
     st.dataframe(
         pd.DataFrame(
             [
                 {
-                    "起点（mm）": segment.start_mm,
-                    "终点（mm）": segment.end_mm,
-                    "采样点数": len(segment.positions_mm),
-                }
-                for segment in solution.segments
+                    "项目": "最大剪力",
+                    "数值": solution.max_shear,
+                    "位置（mm）": solution.max_shear_position,
+                },
+                {
+                    "项目": "最大弯矩",
+                    "数值": solution.max_moment,
+                    "位置（mm）": solution.max_moment_position,
+                },
+                {
+                    "项目": "最大绝对挠度（保留符号）",
+                    "数值": solution.max_deflection_mm,
+                    "位置（mm）": solution.max_deflection_position_mm,
+                },
             ]
         ),
         hide_index=True,
     )
+
+    st.subheader("受力简图数据")
+    diagram_data = solution.diagram_data
+    st.json(diagram_data)
+
+    if solution.method == "fem":
+        st.subheader("FEM 节点挠度")
+        st.dataframe(
+            pd.DataFrame(
+                {
+                    "节点位置（mm）": solution.node_positions_mm,
+                    "挠度（mm）": solution.displacements_mm,
+                    "转角（rad）": solution.rotations_rad,
+                }
+            ),
+            hide_index=True,
+        )
 
     st.subheader("FEM 网格元数据")
     st.dataframe(

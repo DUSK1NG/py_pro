@@ -54,10 +54,41 @@ def build_textbook_markdown(problem: BeamProblem, solution: BeamSolution) -> str
             f"剪力：{_number(segment.shear_n[0])} N → {_number(segment.shear_n[-1])} N；"
             f"弯矩：{_number(segment.bending_moment_n_mm[0])} N·mm"
             f" → {_number(segment.bending_moment_n_mm[-1])} N·mm；"
-            f"{len(segment.positions_mm)} 个采样点"
+            f"{len(segment.positions_mm)} 个采样点\n"
+            f"  - {segment.shear_expression}\n"
+            f"  - {segment.moment_expression}"
         )
         for segment in solution.segments
     ] or ["- 无"]
+    diagram = solution.diagram_data
+    diagram_lines = [
+        f"- 梁：0–{_number(diagram.get('beam_length_mm', problem.length_mm))} mm",
+        f"- 支座数据：{diagram.get('supports', [])}",
+        f"- 集中力数据：{diagram.get('point_loads', [])}",
+        f"- 均布荷载数据：{diagram.get('distributed_loads', [])}",
+        f"- 反力数据：{diagram.get('reactions', [])}",
+    ]
+    fem_lines: list[str] = []
+    if solution.method == "fem":
+        mesh = solution.metadata.get("mesh", {})
+        accuracy = solution.metadata.get("accuracy", {})
+        fem_lines = [
+            "",
+            "## FEM 节点挠度",
+            *(
+                f"- x={_number(position)} mm：v={_number(deflection, 6)} mm，"
+                f"θ={_number(rotation, 9)} rad"
+                for position, deflection, rotation in zip(
+                    solution.node_positions_mm,
+                    solution.displacements_mm,
+                    solution.rotations_rad,
+                )
+            ),
+            "",
+            "## FEM 网格与精度",
+            f"- 网格说明：{mesh}",
+            f"- 精度说明：{accuracy.get('description', '')}",
+        ]
     step_lines = [f"- {step}" for step in steps] or ["- 未提供"]
     warning_lines = [f"- {warning}" for warning in warnings] or ["- 无"]
 
@@ -81,10 +112,18 @@ def build_textbook_markdown(problem: BeamProblem, solution: BeamSolution) -> str
             "## 剪力/弯矩分段",
             *segment_lines,
             "",
+            "## 剪力/弯矩极值",
+            f"- 最大剪力：{_number(solution.max_shear, 6)} N @ {_number(solution.max_shear_position)} mm",
+            f"- 最大弯矩：{_number(solution.max_moment, 6)} N·mm @ {_number(solution.max_moment_position)} mm",
+            "",
+            "## 受力简图数据",
+            *diagram_lines,
+            "",
             "## 挠度曲线摘要",
             f"- 最大挠度：{_number(solution.max_deflection_mm, 6)} mm",
             f"- 最大挠度位置：{_number(solution.max_deflection_position_mm)} mm",
             f"- 曲线采样点数：{sum(1 for _ in _curve_points(solution))}",
+            *fem_lines,
             "",
             "## 解题步骤",
             *step_lines,
@@ -97,13 +136,64 @@ def build_textbook_markdown(problem: BeamProblem, solution: BeamSolution) -> str
 
 
 def build_textbook_csv(solution: BeamSolution) -> str:
-    """导出挠度曲线；仅反力位置填写对应竖向反力。"""
-    reactions = {float(item.position_mm): item.vertical_n for item in solution.reactions}
+    """以独立曲线行和反力行导出统一教材题结果。"""
     buffer = StringIO(newline="")
     writer = csv.writer(buffer, lineterminator="\n")
-    writer.writerow(["x_mm", "deflection_mm", "reaction_vertical_n"])
+    writer.writerow(
+        [
+            "x_mm",
+            "deflection_mm",
+            "reaction_vertical_n",
+            "row_type",
+            "shear_n",
+            "moment_n",
+            "rotation_rad",
+            "reaction_moment_n",
+            "method",
+            "classification",
+            "check_sum_vertical_n",
+            "check_sum_moment_about_0_n_mm",
+        ]
+    )
+    category = getattr(solution.classification, "category", "未知")
+    check_vertical = solution.checks.get("sum_vertical_n", "")
+    check_moment = solution.checks.get("sum_moment_about_0_n_mm", "")
     for position, deflection in _curve_points(solution):
         x_value = float(position)
-        reaction = reactions.get(x_value)
-        writer.writerow([x_value, float(deflection), "" if reaction is None else float(reaction)])
+        shear = solution.shear_at(x_value) if solution.shear_at is not None else ""
+        moment = solution.moment_at(x_value) if solution.moment_at is not None else ""
+        rotation = solution.theta_at(x_value) if solution.theta_at is not None else ""
+        writer.writerow(
+            [
+                x_value,
+                float(deflection),
+                "",
+                "curve",
+                shear,
+                moment,
+                rotation,
+                "",
+                solution.method,
+                category,
+                check_vertical,
+                check_moment,
+            ]
+        )
+    for reaction in solution.reactions:
+        writer.writerow(
+            [
+                float(reaction.position_mm),
+                "",
+                float(reaction.vertical_n),
+                "reaction",
+                "",
+                "",
+                "",
+                float(reaction.moment_n_mm),
+                solution.method,
+                category,
+                check_vertical,
+                check_moment,
+            ]
+        )
     return buffer.getvalue()
