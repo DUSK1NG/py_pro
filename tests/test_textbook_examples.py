@@ -27,7 +27,7 @@ def _problem_from_example(example: dict[str, object]) -> BeamProblem:
 
 
 def test_textbook_examples_run_with_documented_methods_reactions_and_deflections():
-    assert "77 项自动化测试" not in README_PATH.read_text(encoding="utf-8")
+    assert "77 项" not in README_PATH.read_text(encoding="utf-8")
     examples = json.loads(EXAMPLES_PATH.read_text(encoding="utf-8"))["examples"]
 
     assert {example["id"] for example in examples} == {

@@ -33,3 +33,8 @@
 - `python -m pytest tests/test_textbook_examples.py -q`：1 passed。
 - `python -m py_compile app.py app_styled.py mechanics/*.py ui/*.py utils/*.py vision/*.py`：通过（使用 PowerShell 展开的等价文件列表）。
 - `python -m pytest -q`：139 passed。
+
+## README 过期测试数字断言调整
+
+- 将 README 回归检查由精确短语“77 项自动化测试”改为禁止出现“77 项”，以覆盖同一过期数字的其他表述，同时保留其余示例结果断言。
+- `python -m pytest tests/test_textbook_examples.py -q`：1 passed。
