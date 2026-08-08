@@ -13,6 +13,7 @@ from utils.units import (
     convert_modulus_to_mpa,
 )
 from vision.load_deflection_ui import render_load_deflection_analysis
+from ui.textbook_solver_ui import render_textbook_solver
 
 from app import calculate_beam
 from visualization.plotting import (
@@ -140,6 +141,20 @@ def main() -> None:
 
     st.sidebar.markdown("## 参数面板")
     st.sidebar.caption("输入实验参数，统一换算后计算理论响应")
+
+    mode = st.sidebar.selectbox(
+        "工作模式",
+        ["基础理论分析", "教材题求解器"],
+    )
+    if mode == "教材题求解器":
+        render_textbook_solver()
+        render_report_exports(
+            None,
+            None,
+            textbook_problem=st.session_state.get("textbook_export_problem"),
+            textbook_solution=st.session_state.get("textbook_export_solution"),
+        )
+        return
 
     load_type = st.sidebar.selectbox(
         "荷载类型",
