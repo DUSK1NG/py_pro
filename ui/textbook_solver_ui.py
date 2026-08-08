@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import MutableMapping
+from typing import Any
+
 import pandas as pd
 import streamlit as st
 
@@ -19,6 +22,75 @@ from mechanics.textbook_solver import solve_textbook_beam
 _SUPPORT_COLUMNS = ["position_mm", "kind", "label"]
 _POINT_LOAD_COLUMNS = ["position_mm", "force_n"]
 _DISTRIBUTED_LOAD_COLUMNS = ["start_mm", "end_mm", "intensity_n_per_mm"]
+
+_DEFAULT_LENGTH_MM = 1000.0
+_DEFAULT_MODULUS_MPA = 200_000.0
+_DEFAULT_INERTIA_MM4 = 1_000_000.0
+_EDITOR_KEYS = (
+    "textbook_support_editor",
+    "textbook_point_load_editor",
+    "textbook_distributed_load_editor",
+)
+
+
+def _clear_cached_result(state: MutableMapping[str, Any]) -> None:
+    state.pop("textbook_solution", None)
+    state.pop("textbook_problem", None)
+
+
+def _reset_editors(state: MutableMapping[str, Any]) -> None:
+    for key in _EDITOR_KEYS:
+        state.pop(key, None)
+
+
+def _set_template_rows(
+    state: MutableMapping[str, Any],
+    *,
+    support_rows: list[dict[str, object]],
+    point_load_rows: list[dict[str, object]],
+) -> None:
+    state["textbook_length_mm"] = _DEFAULT_LENGTH_MM
+    state["textbook_support_rows"] = support_rows
+    state["textbook_point_load_rows"] = point_load_rows
+    state["textbook_distributed_load_rows"] = []
+    _clear_cached_result(state)
+    _reset_editors(state)
+
+
+def apply_simply_supported_template(state: MutableMapping[str, Any]) -> None:
+    """应用简支梁模板，并作废此前求解结果。"""
+    _set_template_rows(
+        state,
+        support_rows=[
+            {"position_mm": 0.0, "kind": "pin", "label": "A"},
+            {"position_mm": 1000.0, "kind": "roller", "label": "B"},
+        ],
+        point_load_rows=[{"position_mm": 500.0, "force_n": -1000.0}],
+    )
+
+
+def apply_cantilever_template(state: MutableMapping[str, Any]) -> None:
+    """应用悬臂梁模板，并作废此前求解结果。"""
+    _set_template_rows(
+        state,
+        support_rows=[
+            {"position_mm": 0.0, "kind": "fixed", "label": "A"},
+            {"position_mm": 1000.0, "kind": "free", "label": "自由端"},
+        ],
+        point_load_rows=[{"position_mm": 1000.0, "force_n": -1000.0}],
+    )
+
+
+def apply_clear_input(state: MutableMapping[str, Any]) -> None:
+    """清空表格输入、复位标量默认值，并作废此前求解结果。"""
+    state["textbook_length_mm"] = _DEFAULT_LENGTH_MM
+    state["textbook_modulus_mpa"] = _DEFAULT_MODULUS_MPA
+    state["textbook_inertia_mm4"] = _DEFAULT_INERTIA_MM4
+    state["textbook_support_rows"] = []
+    state["textbook_point_load_rows"] = []
+    state["textbook_distributed_load_rows"] = []
+    _clear_cached_result(state)
+    _reset_editors(state)
 
 
 def build_problem_from_rows(
@@ -67,11 +139,36 @@ def build_problem_from_rows(
     return problem
 
 
+def submit_textbook_problem(
+    state: MutableMapping[str, Any],
+    *,
+    length_mm: float,
+    elastic_modulus_mpa: float,
+    inertia_mm4: float,
+    support_rows: list[dict[str, object]],
+    point_load_rows: list[dict[str, object]],
+    distributed_load_rows: list[dict[str, object]],
+) -> BeamSolution:
+    """求解并仅在成功后替换缓存结果。"""
+    problem = build_problem_from_rows(
+        length_mm=length_mm,
+        elastic_modulus_mpa=elastic_modulus_mpa,
+        inertia_mm4=inertia_mm4,
+        support_rows=support_rows,
+        point_load_rows=point_load_rows,
+        distributed_load_rows=distributed_load_rows,
+    )
+    solution = solve_textbook_beam(problem)
+    state["textbook_solution"] = solution
+    state["textbook_problem"] = problem
+    return solution
+
+
 def render_textbook_solver() -> BeamSolution | None:
     """渲染教材题表单，并返回本次或上次成功求得的梁解。"""
-    st.session_state.setdefault("textbook_length_mm", 1000.0)
-    st.session_state.setdefault("textbook_modulus_mpa", 200_000.0)
-    st.session_state.setdefault("textbook_inertia_mm4", 1_000_000.0)
+    st.session_state.setdefault("textbook_length_mm", _DEFAULT_LENGTH_MM)
+    st.session_state.setdefault("textbook_modulus_mpa", _DEFAULT_MODULUS_MPA)
+    st.session_state.setdefault("textbook_inertia_mm4", _DEFAULT_INERTIA_MM4)
     st.session_state.setdefault(
         "textbook_support_rows",
         [
@@ -90,40 +187,13 @@ def render_textbook_solver() -> BeamSolution | None:
 
     template_columns = st.columns(3)
     if template_columns[0].button("简支梁模板", width="stretch"):
-        st.session_state["textbook_length_mm"] = 1000.0
-        st.session_state["textbook_support_rows"] = [
-            {"position_mm": 0.0, "kind": "pin", "label": "A"},
-            {"position_mm": 1000.0, "kind": "roller", "label": "B"},
-        ]
-        st.session_state["textbook_point_load_rows"] = [
-            {"position_mm": 500.0, "force_n": -1000.0}
-        ]
-        st.session_state["textbook_distributed_load_rows"] = []
-        st.session_state.pop("textbook_support_editor", None)
-        st.session_state.pop("textbook_point_load_editor", None)
-        st.session_state.pop("textbook_distributed_load_editor", None)
+        apply_simply_supported_template(st.session_state)
         st.rerun()
     if template_columns[1].button("悬臂梁模板", width="stretch"):
-        st.session_state["textbook_length_mm"] = 1000.0
-        st.session_state["textbook_support_rows"] = [
-            {"position_mm": 0.0, "kind": "fixed", "label": "A"},
-            {"position_mm": 1000.0, "kind": "free", "label": "自由端"},
-        ]
-        st.session_state["textbook_point_load_rows"] = [
-            {"position_mm": 1000.0, "force_n": -1000.0}
-        ]
-        st.session_state["textbook_distributed_load_rows"] = []
-        st.session_state.pop("textbook_support_editor", None)
-        st.session_state.pop("textbook_point_load_editor", None)
-        st.session_state.pop("textbook_distributed_load_editor", None)
+        apply_cantilever_template(st.session_state)
         st.rerun()
     if template_columns[2].button("清空输入", width="stretch"):
-        st.session_state["textbook_support_rows"] = []
-        st.session_state["textbook_point_load_rows"] = []
-        st.session_state["textbook_distributed_load_rows"] = []
-        st.session_state.pop("textbook_support_editor", None)
-        st.session_state.pop("textbook_point_load_editor", None)
-        st.session_state.pop("textbook_distributed_load_editor", None)
+        apply_clear_input(st.session_state)
         st.rerun()
 
     with st.form("textbook_solver_form"):
@@ -188,7 +258,8 @@ def render_textbook_solver() -> BeamSolution | None:
 
     if submitted:
         try:
-            problem = build_problem_from_rows(
+            submit_textbook_problem(
+                st.session_state,
                 length_mm=length_mm,
                 elastic_modulus_mpa=elastic_modulus_mpa,
                 inertia_mm4=inertia_mm4,
@@ -196,8 +267,6 @@ def render_textbook_solver() -> BeamSolution | None:
                 point_load_rows=point_load_rows.to_dict("records"),
                 distributed_load_rows=distributed_load_rows.to_dict("records"),
             )
-            st.session_state["textbook_solution"] = solve_textbook_beam(problem)
-            st.session_state["textbook_problem"] = problem
         except (ProblemInputError, ValueError) as error:
             st.error(f"参数无法求解：{error}")
 
