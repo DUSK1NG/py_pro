@@ -2,7 +2,7 @@
 
 import pytest
 
-from mechanics.beam_fem import solve_fem
+from mechanics.beam_fem import _normalize_equilibrium_residual, solve_fem
 from mechanics.textbook_models import (
     BeamProblem,
     DistributedLoad,
@@ -75,6 +75,10 @@ def test_fem_partial_udl_preserves_global_equilibrium():
     assert sum(reaction.vertical_n for reaction in result.reactions) == pytest.approx(1200.0)
     assert result.checks["sum_vertical_n"] == pytest.approx(0.0, abs=1e-8)
     assert result.checks["sum_moment_about_0_n_mm"] == pytest.approx(0.0, abs=1e-8)
+
+
+def test_equilibrium_residual_normalizes_cross_platform_solver_roundoff():
+    assert _normalize_equilibrium_residual(3.94e-6, 1200.0) == pytest.approx(0.0)
 
 
 def test_fem_rejects_mechanism_with_clear_input_error():

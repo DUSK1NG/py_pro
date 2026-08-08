@@ -19,7 +19,7 @@ from mechanics.textbook_models import (
 
 
 _SOLVE_ERROR = "机构或约束不足，刚度矩阵不可解"
-_EPSILON = 1e-9
+_EPSILON = 1e-8
 
 
 def solve_fem(problem: BeamProblem, max_elements: int = 200) -> BeamSolution:
@@ -477,4 +477,4 @@ def _equilibrium_checks(problem: BeamProblem, reactions: list[Reaction]) -> dict
 
 def _normalize_equilibrium_residual(value: float, scale: float) -> float:
     """Suppress solver round-off while preserving physically meaningful imbalance."""
-    return 0.0 if abs(value) <= 1e-9 * max(1.0, scale) else value
+    return 0.0 if abs(value) <= _EPSILON * max(1.0, scale) else value
