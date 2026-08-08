@@ -96,7 +96,26 @@ def test_two_distributed_loads_superpose_through_the_common_entrypoint():
     assert result.checks["sum_moment_about_0_n_mm"] == pytest.approx(0.0)
 
 
-def test_three_supports_are_indeterminate_and_dispatched_to_fem():
+@pytest.mark.parametrize(
+    "supports",
+    [
+        [Support(0.0, "roller"), Support(1000.0, "pin")],
+        [Support(200.0, "pin"), Support(800.0, "roller")],
+    ],
+)
+def test_noncanonical_two_support_layouts_are_dispatched_to_fem(supports):
+    result = solve_textbook_beam(
+        beam_problem(
+            supports=supports,
+            point_loads=[PointLoad(500.0, -1000.0)],
+        )
+    )
+
+    assert result.method == "fem"
+    assert result.classification == ProblemClassification("静定", "fem")
+
+
+def test_three_supports_are_indeterminate_and_return_the_complete_common_contract():
     problem = beam_problem(
         supports=[Support(0.0, "pin"), Support(500.0, "roller"), Support(1000.0, "roller")],
         point_loads=[PointLoad(250.0, -1000.0)],
@@ -108,6 +127,23 @@ def test_three_supports_are_indeterminate_and_dispatched_to_fem():
     assert classification == ProblemClassification("超静定（数值解）", "fem")
     assert result.method == "fem"
     assert result.classification == classification
+    for field in (
+        "method",
+        "classification",
+        "shear_segments",
+        "moment_segments",
+        "metadata",
+        "x_mm",
+        "deflection_mm",
+        "checks",
+    ):
+        assert hasattr(result, field)
+    assert result.shear_segments is result.segments
+    assert result.moment_segments is result.segments
+    assert len(result.x_mm) == len(result.deflection_mm) > 1
+    assert result.metadata["method"] == "fem"
+    assert result.metadata["classification"] == "超静定（数值解）"
+    assert result.checks
 
 
 def test_mechanism_is_classified_and_rejected_with_a_readable_input_error():

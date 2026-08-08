@@ -9,7 +9,6 @@ from typing import Literal
 from mechanics.analytical_beam import (
     solve_cantilever,
     solve_simply_supported,
-    supports_analytical,
 )
 from mechanics.beam_fem import solve_fem
 from mechanics.textbook_models import BeamProblem, BeamSolution, ProblemInputError
@@ -45,9 +44,29 @@ def classify_problem(problem: BeamProblem) -> ProblemClassification:
         return ProblemClassification("机构/约束不足", "fem")
     if reaction_components > 2:
         return ProblemClassification("超静定（数值解）", "fem")
-    if supports_analytical(problem):
+    if _supports_dispatch_analytically(problem):
         return ProblemClassification("静定", "analytical")
     return ProblemClassification("静定", "fem")
+
+
+def _supports_dispatch_analytically(problem: BeamProblem) -> bool:
+    """仅允许公共入口承诺的两种标准教材解析构型。"""
+    supports = problem.supports
+    pins = [support for support in supports if support.kind == "pin"]
+    rollers = [support for support in supports if support.kind == "roller"]
+    if len(pins) == len(rollers) == 1:
+        return (
+            pins[0].position_mm == 0
+            and rollers[0].position_mm == problem.length_mm
+            and all(support.kind in {"pin", "roller", "free"} for support in supports)
+        )
+
+    fixed = [support for support in supports if support.kind == "fixed"]
+    return (
+        len(fixed) == 1
+        and fixed[0].position_mm in {0, problem.length_mm}
+        and all(support.kind in {"fixed", "free"} for support in supports)
+    )
 
 
 def solve_textbook_beam(problem: BeamProblem) -> BeamSolution:
