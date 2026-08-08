@@ -151,8 +151,8 @@ def main() -> None:
         render_report_exports(
             None,
             None,
-            textbook_problem=st.session_state.get("textbook_problem"),
-            textbook_solution=st.session_state.get("textbook_solution"),
+            textbook_problem=st.session_state.get("textbook_export_problem"),
+            textbook_solution=st.session_state.get("textbook_export_solution"),
         )
         return
 

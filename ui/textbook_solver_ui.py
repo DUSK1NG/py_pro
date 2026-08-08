@@ -36,6 +36,12 @@ _EDITOR_KEYS = (
 def _clear_cached_result(state: MutableMapping[str, Any]) -> None:
     state.pop("textbook_solution", None)
     state.pop("textbook_problem", None)
+    _clear_export_cache(state)
+
+
+def _clear_export_cache(state: MutableMapping[str, Any]) -> None:
+    state.pop("textbook_export_solution", None)
+    state.pop("textbook_export_problem", None)
 
 
 def _reset_editors(state: MutableMapping[str, Any]) -> None:
@@ -150,17 +156,23 @@ def submit_textbook_problem(
     distributed_load_rows: list[dict[str, object]],
 ) -> BeamSolution:
     """求解并仅在成功后替换缓存结果。"""
-    problem = build_problem_from_rows(
-        length_mm=length_mm,
-        elastic_modulus_mpa=elastic_modulus_mpa,
-        inertia_mm4=inertia_mm4,
-        support_rows=support_rows,
-        point_load_rows=point_load_rows,
-        distributed_load_rows=distributed_load_rows,
-    )
-    solution = solve_textbook_beam(problem)
+    try:
+        problem = build_problem_from_rows(
+            length_mm=length_mm,
+            elastic_modulus_mpa=elastic_modulus_mpa,
+            inertia_mm4=inertia_mm4,
+            support_rows=support_rows,
+            point_load_rows=point_load_rows,
+            distributed_load_rows=distributed_load_rows,
+        )
+        solution = solve_textbook_beam(problem)
+    except (ProblemInputError, ValueError):
+        _clear_export_cache(state)
+        raise
     state["textbook_solution"] = solution
     state["textbook_problem"] = problem
+    state["textbook_export_solution"] = solution
+    state["textbook_export_problem"] = problem
     return solution
 
 

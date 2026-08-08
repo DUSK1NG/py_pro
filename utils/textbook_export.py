@@ -49,7 +49,13 @@ def build_textbook_markdown(problem: BeamProblem, solution: BeamSolution) -> str
     ] or ["- 无"]
     check_lines = [f"- {name}：{_number(value, 6)}" for name, value in checks.items()] or ["- 无"]
     segment_lines = [
-        f"- {_number(segment.start_mm)}–{_number(segment.end_mm)} mm：{len(segment.positions_mm)} 个采样点"
+        (
+            f"- {_number(segment.start_mm)}–{_number(segment.end_mm)} mm："
+            f"剪力：{_number(segment.shear_n[0])} N → {_number(segment.shear_n[-1])} N；"
+            f"弯矩：{_number(segment.bending_moment_n_mm[0])} N·mm"
+            f" → {_number(segment.bending_moment_n_mm[-1])} N·mm；"
+            f"{len(segment.positions_mm)} 个采样点"
+        )
         for segment in solution.segments
     ] or ["- 无"]
     step_lines = [f"- {step}" for step in steps] or ["- 未提供"]
