@@ -1,0 +1,76 @@
+{
+  "units": {
+    "length": "mm",
+    "force": "N",
+    "elastic_modulus": "MPa",
+    "inertia": "mm^4"
+  },
+  "examples": [
+    {
+      "id": "midspan_point_load",
+      "title": "1 m 左铰右滚梁的跨中集中力",
+      "length_mm": 1000.0,
+      "elastic_modulus_mpa": 200000.0,
+      "inertia_mm4": 1000000.0,
+      "supports": [
+        {"position_mm": 0.0, "kind": "pin", "label": "A"},
+        {"position_mm": 1000.0, "kind": "roller", "label": "B"}
+      ],
+      "point_loads": [
+        {"position_mm": 500.0, "force_n": -1000.0}
+      ],
+      "distributed_loads": [],
+      "expected": {
+        "method": "analytical",
+        "classification": "静定",
+        "vertical_reactions_n": [500.0, 500.0],
+        "max_deflection_mm": -0.10416666666666667,
+        "max_deflection_position_mm": 500.0
+      }
+    },
+    {
+      "id": "partial_uniform_load",
+      "title": "简支梁的部分均布载荷",
+      "length_mm": 1000.0,
+      "elastic_modulus_mpa": 200000.0,
+      "inertia_mm4": 1000000.0,
+      "supports": [
+        {"position_mm": 0.0, "kind": "pin", "label": "A"},
+        {"position_mm": 1000.0, "kind": "roller", "label": "B"}
+      ],
+      "point_loads": [],
+      "distributed_loads": [
+        {"start_mm": 200.0, "end_mm": 800.0, "intensity_n_per_mm": -2.0}
+      ],
+      "expected": {
+        "method": "analytical",
+        "classification": "静定",
+        "vertical_reactions_n": [600.0, 600.0],
+        "max_deflection_mm": -0.10587500000000001,
+        "max_deflection_position_mm": 500.0
+      }
+    },
+    {
+      "id": "cantilever_tip_load",
+      "title": "左端固定悬臂梁的端点集中力",
+      "length_mm": 1000.0,
+      "elastic_modulus_mpa": 200000.0,
+      "inertia_mm4": 1000000.0,
+      "supports": [
+        {"position_mm": 0.0, "kind": "fixed", "label": "A"},
+        {"position_mm": 1000.0, "kind": "free", "label": "B"}
+      ],
+      "point_loads": [
+        {"position_mm": 1000.0, "force_n": -100.0}
+      ],
+      "distributed_loads": [],
+      "expected": {
+        "method": "analytical",
+        "classification": "静定",
+        "vertical_reactions_n": [100.0],
+        "max_deflection_mm": -0.16666666666666669,
+        "max_deflection_position_mm": 1000.0
+      }
+    }
+  ]
+}
