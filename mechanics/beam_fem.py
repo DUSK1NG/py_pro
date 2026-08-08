@@ -338,7 +338,7 @@ def _curve_extrema(
             [(shear_start, start), (shear_at(end_query), end)]
         )
         moment_candidates.extend(
-            [(moment_at(start), start), (moment_at(end), end)]
+            [(moment_at(start_query), start), (moment_at(end_query), end)]
         )
         intensity = _intensity_on_element(problem, start, end)
         if abs(intensity) > _EPSILON:

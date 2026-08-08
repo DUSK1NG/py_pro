@@ -128,3 +128,35 @@ python -m pytest -q
 - `tests/test_textbook_export.py`
 - `tests/test_textbook_solver.py`
 - `.superpowers/sdd/final-fix-report.md`
+
+## 最终边界修复（final-fix2）
+
+### 根因与最小修复
+
+FEM 的 `_curve_extrema()` 已经为剪力候选保留各单元端点的左右极限，
+但弯矩候选仍以精确节点坐标查询。内部节点按右侧单元定位，导致
+`pin@0 + fixed@500 + roller@1000` 的固定支座左侧弯矩被右侧的零弯矩覆盖。
+
+弯矩端点候选现与剪力一致，使用 `math.nextafter()` 查询每个单元的起、终点
+单侧极限，同时仍把实际节点坐标作为报告的位置。
+
+### TDD：RED → GREEN
+
+新增回归：4 单元、`-1000 N @ 250 mm`、内部固定支座 `@ 500 mm`。
+
+RED：
+
+```text
+python -m pytest tests/test_textbook_final_fixes.py -k 'fem_moment_extrema_keep_one_sided_internal_support_endpoints' -q
+```
+
+结果：`1 failed, 13 deselected`。旧实现返回 `78125 N·mm @ 250 mm`，
+没有报告内部固定支座左侧的 `-93750 N·mm @ 500 mm`。
+
+GREEN：同一命令结果为 `1 passed, 13 deselected`。
+
+### 最终验证
+
+- FEM、教材题与导出聚焦回归：`76 passed in 2.30s`。
+- `python -m py_compile mechanics/beam_fem.py`：退出码 `0`。
+- 全量 `python -m pytest -q`：`153 passed in 2.69s`。

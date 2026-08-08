@@ -170,6 +170,20 @@ def test_resultant_extrema_use_one_sided_endpoints_and_internal_shear_zero(solve
     assert result.max_moment_position == pytest.approx(625.0, abs=1e-9)
 
 
+def test_fem_moment_extrema_keep_one_sided_internal_support_endpoints():
+    problem = _problem(PointLoad(250.0, -1000.0))
+    problem.supports = [
+        Support(0.0, "pin", "A"),
+        Support(500.0, "fixed", "B"),
+        Support(1000.0, "roller", "C"),
+    ]
+
+    result = solve_fem(problem, max_elements=4)
+
+    assert result.max_moment == pytest.approx(-93_750.0, abs=1e-6)
+    assert result.max_moment_position == pytest.approx(500.0)
+
+
 def test_csv_uses_separate_curve_and_reaction_rows_with_complete_fields():
     solution = solve_textbook_beam(
         _problem(PointLoad(0.0, -1000.0))
