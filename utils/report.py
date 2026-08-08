@@ -6,6 +6,9 @@ from html import escape
 from io import BytesIO
 from typing import Mapping
 
+from mechanics.textbook_models import BeamProblem, BeamSolution
+from utils.textbook_export import build_textbook_markdown
+
 
 def _number(value: object, digits: int = 6) -> str:
     return f"{float(value):.{digits}f}"
@@ -180,3 +183,49 @@ def build_pdf_report(
 ) -> bytes:
     merged = _merge_measurement_summary(inputs, measurement, comparison)
     return _original_build_pdf_report(merged, result)
+
+
+def build_textbook_pdf_report(problem: BeamProblem, solution: BeamSolution) -> bytes:
+    """将教材题文字报告排版为 PDF，不依赖图表图片。"""
+    try:
+        from reportlab.lib.pagesizes import A4
+        from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+        from reportlab.lib.units import mm
+        from reportlab.pdfbase import pdfmetrics
+        from reportlab.pdfbase.cidfonts import UnicodeCIDFont
+        from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
+    except ImportError as error:  # pragma: no cover - dependency is declared in requirements
+        raise RuntimeError("生成 PDF 需要安装 reportlab 依赖。") from error
+
+    pdfmetrics.registerFont(UnicodeCIDFont("STSong-Light"))
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle(
+        "TextbookTitle", parent=styles["Title"], fontName="STSong-Light", fontSize=18, leading=24
+    )
+    heading_style = ParagraphStyle(
+        "TextbookHeading", parent=styles["Heading2"], fontName="STSong-Light", fontSize=13, leading=18
+    )
+    body_style = ParagraphStyle(
+        "TextbookBody", parent=styles["BodyText"], fontName="STSong-Light", fontSize=10, leading=15
+    )
+    story = []
+    for line in build_textbook_markdown(problem, solution).splitlines():
+        if not line:
+            story.append(Spacer(1, 5))
+        elif line.startswith("# "):
+            story.append(Paragraph(escape(line[2:]), title_style))
+        elif line.startswith("## "):
+            story.append(Paragraph(escape(line[3:]), heading_style))
+        else:
+            story.append(Paragraph(escape(line), body_style))
+
+    buffer = BytesIO()
+    SimpleDocTemplate(
+        buffer,
+        pagesize=A4,
+        rightMargin=18 * mm,
+        leftMargin=18 * mm,
+        topMargin=18 * mm,
+        bottomMargin=18 * mm,
+    ).build(story)
+    return buffer.getvalue()

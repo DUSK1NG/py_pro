@@ -148,6 +148,12 @@ def main() -> None:
     )
     if mode == "教材题求解器":
         render_textbook_solver()
+        render_report_exports(
+            None,
+            None,
+            textbook_problem=st.session_state.get("textbook_problem"),
+            textbook_solution=st.session_state.get("textbook_solution"),
+        )
         return
 
     load_type = st.sidebar.selectbox(

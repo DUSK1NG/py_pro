@@ -8,6 +8,8 @@ from typing import Iterable
 
 from matplotlib.figure import Figure
 
+from utils.textbook_export import build_textbook_csv
+
 
 def build_result_csv(result: dict[str, object]) -> str:
     """将理论结果中的标量字段导出为 field,value CSV。"""
