@@ -7,7 +7,7 @@ import matplotlib
 matplotlib.use("Agg")
 
 from mechanics.central_point_load import sample_beam
-from visualization.plotting import plot_deflection
+from plots.plotting import plot_deflection
 
 
 def test_saving_chinese_plot_emits_no_missing_glyph_warning(tmp_path):

@@ -8,7 +8,7 @@ from utils.units import (
     convert_force_to_n,
     convert_length_to_mm,
 )
-from visualization.plotting import (
+from plots.plotting import (
     plot_bending_moment,
     plot_deflection,
     plot_shear_force,

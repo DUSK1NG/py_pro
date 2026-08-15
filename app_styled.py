@@ -16,7 +16,7 @@ from vision.load_deflection_ui import render_load_deflection_analysis
 from ui.textbook_solver_ui import render_textbook_solver
 
 from app import calculate_beam
-from visualization.plotting import (
+from plots.plotting import (
     plot_bending_moment,
     plot_deflection,
     plot_shear_force,

@@ -5,10 +5,10 @@ import matplotlib
 matplotlib.use("Agg")
 
 from mechanics.central_point_load import sample_beam
-from visualization.plotting import plot_bending_moment, plot_deflection
+from plots.plotting import plot_bending_moment, plot_deflection
 
 
-def test_moment_and_deflection_plots_use_sample_data_and_save_png(tmp_path):
+def test_moment_and_deflection_plots_use_sampled_values_and_save_png(tmp_path):
     """两张曲线图应使用采样数据，并能保存为非空 PNG。"""
     result = sample_beam(1000, 100, 200000, 1000000)
     moment_path = tmp_path / "moment.png"

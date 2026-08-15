@@ -11,7 +11,7 @@ from mechanics.textbook_models import BeamProblem, DistributedLoad, PointLoad, S
 from mechanics.textbook_solver import solve_textbook_beam
 
 
-EXAMPLES_PATH = Path(__file__).parents[1] / "sample_data" / "textbook_examples.json"
+EXAMPLES_PATH = Path(__file__).parents[1] / "examples" / "textbook_examples.json"
 README_PATH = Path(__file__).parents[1] / "README.md"
 
 

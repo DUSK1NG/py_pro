@@ -12,7 +12,7 @@ from utils.export import (
     build_result_csv,
     figure_to_png_bytes,
 )
-from visualization.plotting import plot_bending_moment, plot_deflection, plot_shear_force
+from plots.plotting import plot_bending_moment, plot_deflection, plot_shear_force
 
 
 def render_theory_exports(theory_result: dict[str, object] | None) -> None:

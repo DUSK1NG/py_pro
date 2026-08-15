@@ -8,10 +8,10 @@ import pytest
 from matplotlib.figure import Figure
 
 from mechanics.central_point_load import sample_beam
-from visualization.plotting import plot_shear_force
+from plots.plotting import plot_shear_force
 
 
-def test_shear_plot_returns_figure_and_uses_sample_data():
+def test_shear_plot_returns_figure_and_uses_sampled_values():
     """剪力图应返回 Figure，并保持采样数据不变。"""
     result = sample_beam(1000, 100, 200000, 1000000)
 
