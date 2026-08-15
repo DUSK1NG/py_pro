@@ -10,7 +10,7 @@
 
 ## 3. 软件设计
 
-介绍 mechanics、vision、visualization、utils 和 Streamlit 界面之间的数据流。
+介绍 mechanics、vision、plots、utils 和 Streamlit 界面之间的数据流。
 
 ## 4. 图像识别方法
 

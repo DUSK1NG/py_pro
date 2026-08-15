@@ -56,4 +56,4 @@ mm_per_pixel = 实际长度（mm） / 像素长度（pixel）
 load_n,measured_deflection_mm
 ```
 
-荷载单位为 N，向下挠度使用负值。建议每个荷载水平重复 3 次，并在导入前计算平均值；原始重复数据另行保存。项目中的 `sample_data/load_deflection_example.csv` 仅为演示文件。
+荷载单位为 N，向下挠度使用负值。建议每个荷载水平重复 3 次，并在导入前计算平均值；原始重复数据另行保存。项目中的 `examples/load_deflection_example.csv` 仅为演示文件。

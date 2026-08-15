@@ -107,10 +107,10 @@ streamlit run app.py
 ```text
 mechanics/       力学计算、荷载模型和截面属性
 vision/          静态图片识别、曲线提取和 Streamlit 图像区
-visualization/   剪力、弯矩和挠度图
+plots/           剪力、弯矩和挠度图
 utils/           单位、校验、对比、报告和 CSV 导出
 tests/           理论、图像、导出和界面相关测试
-sample_data/     示例 CSV 和实验装置参考图
+examples/        示例 CSV 和实验装置参考图
 docs/            实验说明、报告提纲和答辩提纲
 ```
 
@@ -120,7 +120,7 @@ docs/            实验说明、报告提纲和答辩提纲
 2. 输入梁长、荷载、材料和截面参数；
 3. 点击“开始计算”查看理论结果；
 4. 在“图像测量”中上传未加载图和加载图；
-5. 在“荷载—挠度数据分析”中上传 `sample_data/load_deflection_example.csv`；
+5. 在“荷载—挠度数据分析”中上传 `examples/load_deflection_example.csv`；
 6. 下载 CSV、PNG 或 Markdown/PDF 报告。
 
 ## 界面介绍
@@ -165,9 +165,9 @@ docs/            实验说明、报告提纲和答辩提纲
 - **荷载—挠度数据分析**：上传 CSV，比较理论跨中挠度与实测数据；
 - **报告导出**：根据当前结果选择 Markdown、PDF 或 CSV，不点击生成时不会创建报告文件。
 
-![简支梁挠度实验装置参考图](sample_data/reference_beam_deflection_apparatus.jpg)
+![简支梁挠度实验装置参考图](examples/reference_beam_deflection_apparatus.jpg)
 
-图片仅作实验装置参考，来源和使用说明见 [sample_data/README.md](sample_data/README.md)。
+图片仅作实验装置参考，来源和使用说明见 [examples/README.md](examples/README.md)。
 
 ## 输入单位
 
@@ -190,7 +190,7 @@ docs/            实验说明、报告提纲和答辩提纲
 
 标准的左铰右滚简支梁和端部固定的悬臂梁使用解析解。支座多于静定所需约束、支座布置不属于标准解析构型时，程序自动进入 FEM（有限元）数值解；约束不足的机构会提示无法建立稳定模型。
 
-可运行的 JSON 示例位于 [sample_data/textbook_examples.json](sample_data/textbook_examples.json)，包括 1 m 跨中集中力、部分均布载荷和悬臂端点集中力。启动 Streamlit：
+可运行的 JSON 示例位于 [examples/textbook_examples.json](examples/textbook_examples.json)，包括 1 m 跨中集中力、部分均布载荷和悬臂端点集中力。启动 Streamlit：
 
 ```powershell
 streamlit run app_styled.py
@@ -240,7 +240,7 @@ load_n,measured_deflection_mm
 40,-0.0042
 ```
 
-程序会按荷载排序，计算当前梁参数下的理论跨中挠度，显示荷载—挠度曲线、绝对误差和相对误差，并提供对比 CSV 下载。示例文件位于 `sample_data/load_deflection_example.csv`。示例数据只用于演示，不能替代真实实验数据。
+程序会按荷载排序，计算当前梁参数下的理论跨中挠度，显示荷载—挠度曲线、绝对误差和相对误差，并提供对比 CSV 下载。示例文件位于 `examples/load_deflection_example.csv`。示例数据只用于演示，不能替代真实实验数据。
 ## 当前模型适用条件
 
 两端为理想简支，梁为均匀等截面，材料处于线弹性和小挠度范围。不考虑剪切变形、塑性、自重、动态荷载和复杂组合荷载。
