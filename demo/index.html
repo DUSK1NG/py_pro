@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en" translate="no">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BeamLab — Simply Supported Beam Demo</title>
+  <style>
+    :root {
+      --navy: #0b1f3a;
+      --navy-mid: #16355c;
+      --teal: #1f7a7a;
+      --teal-soft: #e6f3f3;
+      --white: #ffffff;
+      --ink: #1a2433;
+      --muted: #5a6878;
+      --line: #d5dde8;
+      --error: #9b1c1c;
+      --error-bg: #fdecec;
+      --radius: 10px;
+      --shadow: 0 1px 2px rgba(11, 31, 58, 0.06), 0 8px 24px rgba(11, 31, 58, 0.06);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: var(--ink);
+      background:
+        linear-gradient(180deg, #f4f7fb 0%, #eef3f8 100%);
+      line-height: 1.5;
+      min-height: 100vh;
+    }
+
+    .wrap {
+      width: min(980px, calc(100% - 2rem));
+      margin: 0 auto;
+      padding: 2rem 0 3rem;
+    }
+
+    header {
+      margin-bottom: 1.5rem;
+    }
+
+    header h1 {
+      margin: 0 0 0.4rem;
+      color: var(--navy);
+      font-size: clamp(1.6rem, 3vw, 2.1rem);
+      letter-spacing: -0.02em;
+    }
+
+    header p {
+      margin: 0;
+      max-width: 42rem;
+      color: var(--muted);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1.05fr 0.95fr;
+      gap: 1rem;
+      align-items: start;
+    }
+
+    @media (max-width: 760px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+
+    .card {
+      background: var(--white);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 1.15rem 1.2rem 1.25rem;
+    }
+
+    .card h2 {
+      margin: 0 0 0.85rem;
+      font-size: 1.05rem;
+      color: var(--navy);
+    }
+
+    .fields {
+      display: grid;
+      gap: 0.85rem;
+    }
+
+    label {
+      display: block;
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--navy-mid);
+      margin-bottom: 0.3rem;
+    }
+
+    .hint {
+      display: block;
+      font-weight: 400;
+      color: var(--muted);
+      font-size: 0.8rem;
+    }
+
+    input[type="number"] {
+      width: 100%;
+      padding: 0.65rem 0.75rem;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      font: inherit;
+      color: var(--ink);
+      background: #fbfcfe;
+    }
+
+    input[type="number"]:focus {
+      outline: 2px solid color-mix(in srgb, var(--teal) 55%, white);
+      border-color: var(--teal);
+      background: var(--white);
+    }
+
+    button {
+      margin-top: 0.35rem;
+      width: 100%;
+      border: 0;
+      border-radius: 8px;
+      padding: 0.8rem 1rem;
+      font: inherit;
+      font-weight: 650;
+      color: var(--white);
+      background: var(--navy);
+      cursor: pointer;
+    }
+
+    button:hover { background: var(--navy-mid); }
+    button:focus-visible {
+      outline: 3px solid color-mix(in srgb, var(--teal) 70%, white);
+      outline-offset: 2px;
+    }
+
+    .error {
+      display: none;
+      margin-top: 0.9rem;
+      padding: 0.75rem 0.85rem;
+      border-radius: 8px;
+      background: var(--error-bg);
+      color: var(--error);
+      border: 1px solid #f0c2c2;
+      font-size: 0.92rem;
+    }
+
+    .error.visible { display: block; }
+
+    .results {
+      display: grid;
+      gap: 0.7rem;
+    }
+
+    .result {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 0.75rem 0.85rem;
+      background: linear-gradient(180deg, #ffffff, #f8fbfd);
+    }
+
+    .result .name {
+      font-size: 0.82rem;
+      color: var(--muted);
+      margin-bottom: 0.15rem;
+    }
+
+    .result .value {
+      font-size: 1.15rem;
+      font-variant-numeric: tabular-nums;
+      color: var(--navy);
+      font-weight: 700;
+    }
+
+    .result .value.placeholder {
+      color: #8a97a8;
+      font-weight: 500;
+      font-size: 1rem;
+    }
+
+    .sketch {
+      margin-top: 1rem;
+    }
+
+    .sketch svg {
+      display: block;
+      width: 100%;
+      height: auto;
+      background: var(--teal-soft);
+      border-radius: 8px;
+      border: 1px solid #cfe3e3;
+    }
+
+    .caption {
+      margin: 0.55rem 0 0;
+      font-size: 0.82rem;
+      color: var(--muted);
+    }
+
+    .assumptions {
+      margin-top: 1rem;
+      padding: 1rem 1.15rem;
+      background: var(--white);
+      border: 1px solid var(--line);
+      border-left: 4px solid var(--teal);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    .assumptions h2 {
+      margin: 0 0 0.4rem;
+      font-size: 1.05rem;
+      color: var(--navy);
+    }
+
+    .assumptions p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    footer {
+      margin-top: 1.5rem;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    footer a {
+      color: var(--teal);
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>BeamLab</h1>
+      <p>
+        Educational demo of a simply supported beam with a downward central point load.
+        Enter span, load, and section stiffness to see support reactions, maximum bending moment,
+        and maximum downward deflection magnitude.
+      </p>
+    </header>
+
+    <div class="grid">
+      <section class="card" aria-labelledby="inputs-heading">
+        <h2 id="inputs-heading">Inputs</h2>
+        <form id="beam-form" novalidate>
+          <div class="fields">
+            <div>
+              <label for="length">
+                Span length L
+                <span class="hint">millimetres (mm)</span>
+              </label>
+              <input id="length" name="length" type="number" inputmode="decimal" step="any" value="1000" required aria-describedby="form-error">
+            </div>
+            <div>
+              <label for="load">
+                Central point load P
+                <span class="hint">newtons (N), downward</span>
+              </label>
+              <input id="load" name="load" type="number" inputmode="decimal" step="any" value="100" required aria-describedby="form-error">
+            </div>
+            <div>
+              <label for="modulus">
+                Young’s modulus E
+                <span class="hint">megapascals (MPa = N/mm²)</span>
+              </label>
+              <input id="modulus" name="modulus" type="number" inputmode="decimal" step="any" value="200000" required aria-describedby="form-error">
+            </div>
+            <div>
+              <label for="inertia">
+                Second moment of area I
+                <span class="hint">mm⁴</span>
+              </label>
+              <input id="inertia" name="inertia" type="number" inputmode="decimal" step="any" value="1000000" required aria-describedby="form-error">
+            </div>
+          </div>
+          <button type="submit">Calculate</button>
+          <div id="form-error" class="error" role="alert" aria-live="polite"></div>
+        </form>
+      </section>
+
+      <section class="card" aria-labelledby="results-heading">
+        <h2 id="results-heading">Results</h2>
+        <div class="results">
+          <div class="result">
+            <div class="name">Left support reaction R<sub>A</sub></div>
+            <div id="left-reaction" class="value placeholder">—</div>
+          </div>
+          <div class="result">
+            <div class="name">Right support reaction R<sub>B</sub></div>
+            <div id="right-reaction" class="value placeholder">—</div>
+          </div>
+          <div class="result">
+            <div class="name">Maximum bending moment M<sub>max</sub></div>
+            <div id="max-moment" class="value placeholder">—</div>
+          </div>
+          <div class="result">
+            <div class="name">Maximum downward deflection magnitude |δ|<sub>max</sub></div>
+            <div id="max-deflection" class="value placeholder">—</div>
+          </div>
+        </div>
+
+        <div class="sketch" aria-labelledby="sketch-caption">
+          <svg viewBox="0 0 560 220" role="img" aria-labelledby="sketch-title sketch-caption">
+            <title id="sketch-title">Simply supported beam with central point load</title>
+            <!-- Beam -->
+            <line x1="70" y1="110" x2="490" y2="110" stroke="#0b1f3a" stroke-width="8" stroke-linecap="round"/>
+            <!-- Left pin support -->
+            <polygon points="70,118 55,148 85,148" fill="none" stroke="#1f7a7a" stroke-width="2.5"/>
+            <line x1="48" y1="148" x2="92" y2="148" stroke="#1f7a7a" stroke-width="2.5"/>
+            <!-- Right roller support -->
+            <polygon points="490,118 475,140 505,140" fill="none" stroke="#1f7a7a" stroke-width="2.5"/>
+            <circle cx="490" cy="148" r="8" fill="none" stroke="#1f7a7a" stroke-width="2.5"/>
+            <line x1="468" y1="158" x2="512" y2="158" stroke="#1f7a7a" stroke-width="2.5"/>
+            <!-- Central load -->
+            <line x1="280" y1="34" x2="280" y2="96" stroke="#0b1f3a" stroke-width="2.5"/>
+            <polygon points="280,106 270,90 290,90" fill="#0b1f3a"/>
+            <text x="280" y="26" text-anchor="middle" font-size="16" fill="#0b1f3a" font-family="system-ui,sans-serif">P</text>
+            <!-- Reaction labels -->
+            <text x="70" y="178" text-anchor="middle" font-size="14" fill="#16355c" font-family="system-ui,sans-serif">R_A</text>
+            <text x="490" y="186" text-anchor="middle" font-size="14" fill="#16355c" font-family="system-ui,sans-serif">R_B</text>
+            <!-- Span dimension -->
+            <line x1="70" y1="198" x2="490" y2="198" stroke="#5a6878" stroke-width="1.5"/>
+            <line x1="70" y1="192" x2="70" y2="204" stroke="#5a6878" stroke-width="1.5"/>
+            <line x1="490" y1="192" x2="490" y2="204" stroke="#5a6878" stroke-width="1.5"/>
+            <text x="280" y="214" text-anchor="middle" font-size="14" fill="#5a6878" font-family="system-ui,sans-serif">L</text>
+            <!-- Schematic deflection curve (exaggerated, not to scale) -->
+            <path d="M70 110 Q280 155 490 110" fill="none" stroke="#1f7a7a" stroke-width="2" stroke-dasharray="5 4" opacity="0.85"/>
+            <text x="360" y="150" font-size="12" fill="#1f7a7a" font-family="system-ui,sans-serif">schematic δ</text>
+          </svg>
+          <p id="sketch-caption" class="caption">
+            Schematic sketch (not to scale). Dashed curve shows exaggerated downward deflection for illustration only.
+          </p>
+        </div>
+      </section>
+    </div>
+
+    <section class="assumptions" aria-labelledby="assumptions-heading">
+      <h2 id="assumptions-heading">Assumptions</h2>
+      <p>
+        Linear elastic Euler–Bernoulli beam theory, small deflections, and a single downward concentrated load
+        at midspan. Upward support reactions are positive. Downward deflection is negative in the source sign
+        convention; this page reports the magnitude of the maximum downward deflection. This is an educational example.
+      </p>
+    </section>
+
+    <footer>
+      Source repository:
+      <a href="https://github.com/DUSK1NG/py_pro" rel="noopener noreferrer">github.com/DUSK1NG/py_pro</a>
+    </footer>
+  </div>
+
+  <script>
+    (function () {
+      var form = document.getElementById("beam-form");
+      var errorEl = document.getElementById("form-error");
+      var leftEl = document.getElementById("left-reaction");
+      var rightEl = document.getElementById("right-reaction");
+      var momentEl = document.getElementById("max-moment");
+      var deflectionEl = document.getElementById("max-deflection");
+
+      function clearResults() {
+        leftEl.textContent = "—";
+        rightEl.textContent = "—";
+        momentEl.textContent = "—";
+        deflectionEl.textContent = "—";
+        leftEl.classList.add("placeholder");
+        rightEl.classList.add("placeholder");
+        momentEl.classList.add("placeholder");
+        deflectionEl.classList.add("placeholder");
+      }
+
+      function showError(message) {
+        errorEl.textContent = message;
+        errorEl.classList.add("visible");
+        clearResults();
+      }
+
+      function clearError() {
+        errorEl.textContent = "";
+        errorEl.classList.remove("visible");
+      }
+
+      function parsePositiveFinite(raw, label) {
+        if (raw.trim() === "") {
+          throw new RangeError(label + " is required and cannot be empty.");
+        }
+        var value = Number(raw);
+        if (!Number.isFinite(value)) {
+          throw new RangeError(label + " must be a finite number.");
+        }
+        if (value <= 0) {
+          throw new RangeError(label + " must be a positive number.");
+        }
+        return value;
+      }
+
+      function requirePositiveFinite(value, detail) {
+        if (!Number.isFinite(value) || value <= 0) {
+          throw new RangeError(
+            "Unsupported numerical range: " + detail +
+            " must be a finite, strictly positive value. Adjust the inputs."
+          );
+        }
+        return value;
+      }
+
+      function formatNumber(value, unit) {
+        var text;
+        if (Math.abs(value) >= 1e6 || (Math.abs(value) > 0 && Math.abs(value) < 1e-4)) {
+          text = value.toExponential(6);
+        } else {
+          text = value.toLocaleString("en-US", {
+            maximumFractionDigits: 8,
+            useGrouping: false
+          });
+        }
+        return text + " " + unit;
+      }
+
+      function setResult(el, text) {
+        el.textContent = text;
+        el.classList.remove("placeholder");
+      }
+
+      /**
+       * Matches mechanics/central_point_load.py for a central point load:
+       *   RA = RB = P / 2
+       *   M_max = P * L / 4
+       *   δ(x) = -P * a * (3 L^2 - 4 a^2) / (48 E I), a = min(x, L - x)
+       *   |δ|_max at midspan = P L^3 / (48 E I)
+       */
+      function calculate(L, P, E, I) {
+        var reaction = requirePositiveFinite(P / 2, "support reaction P/2");
+
+        var momentProduct = requirePositiveFinite(P * L, "moment product P·L");
+        var maxMoment = requirePositiveFinite(momentProduct / 4, "maximum bending moment P·L/4");
+
+        var lengthSquared = requirePositiveFinite(L * L, "span product L·L");
+        var lengthCubed = requirePositiveFinite(lengthSquared * L, "span product L³");
+        var deflectionNumerator = requirePositiveFinite(
+          P * lengthCubed,
+          "deflection numerator P·L³"
+        );
+        var stiffness = requirePositiveFinite(E * I, "stiffness product E·I");
+        var denominator = requirePositiveFinite(
+          48 * stiffness,
+          "deflection denominator 48·E·I"
+        );
+
+        var maxDeflectionSigned = -deflectionNumerator / denominator;
+        var maxDeflectionMagnitude = requirePositiveFinite(
+          Math.abs(maxDeflectionSigned),
+          "maximum deflection magnitude |δ|max"
+        );
+
+        return {
+          leftReaction: reaction,
+          rightReaction: reaction,
+          maxMoment: maxMoment,
+          maxDeflectionMagnitude: maxDeflectionMagnitude
+        };
+      }
+
+      form.addEventListener("submit", function (event) {
+        event.preventDefault();
+        clearError();
+
+        try {
+          var L = parsePositiveFinite(document.getElementById("length").value, "Span length L");
+          var P = parsePositiveFinite(document.getElementById("load").value, "Central point load P");
+          var E = parsePositiveFinite(document.getElementById("modulus").value, "Young’s modulus E");
+          var I = parsePositiveFinite(document.getElementById("inertia").value, "Second moment of area I");
+
+          var result = calculate(L, P, E, I);
+
+          setResult(leftEl, formatNumber(result.leftReaction, "N"));
+          setResult(rightEl, formatNumber(result.rightReaction, "N"));
+          setResult(momentEl, formatNumber(result.maxMoment, "N·mm"));
+          setResult(deflectionEl, formatNumber(result.maxDeflectionMagnitude, "mm"));
+        } catch (err) {
+          if (!(err instanceof RangeError)) {
+            throw err;
+          }
+          showError(err.message);
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

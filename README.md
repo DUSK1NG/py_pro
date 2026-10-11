@@ -20,6 +20,8 @@ Local URL: http://localhost:8501
 
 ## 使用
 
+英文演示页位于 [demo/index.html](demo/index.html)，用浏览器打开即可计算跨中集中力下的支座反力、最大弯矩和最大向下挠度幅值，无需安装 Python 依赖。
+
 在侧栏选择“基础理论分析”或“教材题求解器”，输入梁、材料、截面和荷载后计算。基础分析支持跨中集中力、任意位置集中力和满跨均布荷载；结果可与静态图片测量或 CSV 荷载—挠度数据比较，并导出图表和报告。CSV 数据需包含 `load_n`、`measured_deflection_mm` 两列，可从 [样例文件](examples/load_deflection_example.csv) 开始。图片测量使用未加载与加载后的两张图片，不采集视频或实时摄像头画面。
 
 教材题求解器只计算竖向弯曲，支持多个支座、集中力和区间均布荷载。输入单位为 mm、N、MPa 和 mm⁴；向上力为正，向下挠度为负。教材题输入、单位、模型条件与报告说明见[使用指南](docs/usage.md)。实验拍摄说明和样例说明见 [实验指南](docs/experiment_guide.md)、[教材题示例](examples/textbook_examples.json) 与 [样例图片说明](examples/README.md)。
